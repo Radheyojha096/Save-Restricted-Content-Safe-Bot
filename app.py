@@ -3,7 +3,8 @@ import time
 import threading
 import mimetypes
 import requests
-from flask import Flask, send_file, abort, redirect, request, render_template_string
+import json
+from flask import Flask, send_file, abort, redirect, request, render_template_string, jsonify
 from safe_repo.core.media_links import get_stream_file, read_stream_entries, get_stream_entry
 from safe_repo.web.admin import admin_dashboard_view, admin_login_view, admin_logout_view, toggle_featured_view, toggle_trending_view, delete_entry_view
 from safe_repo.web.study import build_public_study_url, build_video_index, load_catalog_entries
@@ -500,6 +501,103 @@ def study_watch_page(token):
       </body>
     </html>
     """, video=video, related_videos=related_videos)
+
+
+# ============= API Endpoints for Real-Time Sync & Management =============
+
+@app.route('/api/videos/sync')
+def api_videos_sync():
+    """API endpoint for real-time video synchronization from bot to website."""
+    try:
+        entries = read_stream_entries()
+        return jsonify({
+            "success": True,
+            "videos": entries,
+            "total": len(entries),
+            "timestamp": __import__('datetime').datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/videos/folders')
+def api_videos_folders():
+    """API endpoint to get all unique folders."""
+    try:
+        entries = read_stream_entries()
+        folders = {}
+        for entry in entries:
+            folder = entry.get('folder', 'General')
+            if folder not in folders:
+                folders[folder] = []
+            folders[folder].append(entry)
+        
+        return jsonify({
+            "success": True,
+            "folders": {k: len(v) for k, v in folders.items()},
+            "total_folders": len(folders)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/videos/recent')
+def api_videos_recent():
+    """API endpoint to get recently added videos."""
+    try:
+        limit = int(request.args.get('limit', 10))
+        entries = read_stream_entries()
+        entries.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        return jsonify({
+            "success": True,
+            "videos": entries[:limit],
+            "total": len(entries)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/videos/featured')
+def api_videos_featured():
+    """API endpoint to get featured videos."""
+    try:
+        entries = read_stream_entries()
+        featured = [e for e in entries if e.get('featured')]
+        return jsonify({
+            "success": True,
+            "videos": featured,
+            "total": len(featured)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/public/folders')
+def api_public_folders():
+    """API endpoint to get public folder structure."""
+    try:
+        entries = read_stream_entries()
+        folders = {}
+        for entry in entries:
+            folder = entry.get('folder', 'General')
+            if folder not in folders:
+                folders[folder] = []
+            folders[folder].append({
+                "token": entry.get('token'),
+                "title": entry.get('title'),
+                "subject": entry.get('subject'),
+                "description": entry.get('description', ''),
+                "stream_url": entry.get('stream_url'),
+                "player_url": entry.get('player_url')
+            })
+        
+        return jsonify({
+            "success": True,
+            "public_folders": folders,
+            "folder_count": len(folders)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route('/health')

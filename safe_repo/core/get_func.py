@@ -79,7 +79,19 @@ async def send_alert(client, message, alert_type, details):
 
 
 def thumbnail(sender):
-    return f'{sender}.jpg' if os.path.exists(f'{sender}.jpg') else None
+    """Get thumbnail path if it exists, or generate a default one."""
+    import logging
+    logger = logging.getLogger(__name__)
+    thumb_path = f'{sender}.jpg'
+    
+    # Check if custom thumbnail exists
+    if os.path.exists(thumb_path):
+        logger.info(f"Using custom thumbnail for {sender}: {thumb_path}")
+        return thumb_path
+    
+    # Return None if no thumbnail (Pyrogram will handle gracefully)
+    logger.debug(f"No custom thumbnail found for {sender}")
+    return None
 
 
 async def get_msg(
