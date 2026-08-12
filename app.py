@@ -769,7 +769,8 @@ def start_bot_process():
             f.write(str(os.getpid()))
 
         print("Starting safe_repo bot process...")
-        bot_proc = subprocess.Popen(["python3", "-m", "safe_repo"])
+        # Explicitly pass environment to subprocess to ensure RENDER_EXTERNAL_URL and other vars are inherited
+        bot_proc = subprocess.Popen(["python3", "-m", "safe_repo"], env=os.environ.copy())
         bot_proc.wait()
         print(f"safe_repo exited with code {bot_proc.returncode}")
     except Exception as e:

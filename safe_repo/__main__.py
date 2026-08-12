@@ -47,6 +47,16 @@ from config import CLONE_LOG_CHANNEL
 
 async def safe_repo_boot():
     try:
+        # Log environment variables for debugging streaming issues
+        import os
+        logger.info("=== Environment Variables for Stream Configuration ===")
+        logger.info(f"PUBLIC_BASE_URL: {os.environ.get('PUBLIC_BASE_URL', 'NOT SET')}")
+        logger.info(f"APP_URL: {os.environ.get('APP_URL', 'NOT SET')}")
+        logger.info(f"RENDER_EXTERNAL_URL: {os.environ.get('RENDER_EXTERNAL_URL', 'NOT SET')}")
+        logger.info(f"BASE_URL: {os.environ.get('BASE_URL', 'NOT SET')}")
+        logger.info(f"PORT: {os.environ.get('PORT', '5000 (default)')}")
+        logger.info("=== End Environment Variables ===")
+        
         logger.info(f"Importing {len(ALL_MODULES)} modules...")
         # Track imported modules and prevent re-importing
         for all_module in ALL_MODULES:

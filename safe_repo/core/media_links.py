@@ -38,17 +38,22 @@ def _get_base_url(base_url=None):
     if base_url:
         return base_url.rstrip("/")
 
+    # Try to get base URL from environment variables
+    # Priority order: explicit URLs first, then Render's auto-provided URL, then fallbacks
     env_url = (
-        os.environ.get("PUBLIC_BASE_URL")
-        or os.environ.get("APP_URL")
-        or os.environ.get("RENDER_EXTERNAL_URL")
-        or os.environ.get("BASE_URL")
-        or ""
-    ).strip()
+        os.environ.get("PUBLIC_BASE_URL", "").strip()
+        or os.environ.get("APP_URL", "").strip()
+        or os.environ.get("RENDER_EXTERNAL_URL", "").strip()
+        or os.environ.get("BASE_URL", "").strip()
+    )
 
     if env_url:
+        # Ensure it's a valid URL (has protocol)
+        if not env_url.startswith(("http://", "https://")):
+            env_url = "https://" + env_url
         return env_url.rstrip("/")
 
+    # Fallback to localhost only if explicitly in development mode
     return "http://127.0.0.1:5000"
 
 
@@ -68,28 +73,41 @@ def _get_max_stream_file_size_bytes(max_size_mb=None):
 
 def save_stream_file(source_path, base_url=None, cache_dir=None, max_size_mb=None) -> Optional[Dict[str, str]]:
     """Copy a local media file into a public cache directory and return stream URLs."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not source_path or not os.path.exists(source_path):
+        logger.warning(f"save_stream_file: source_path does not exist: {source_path}")
         return None
 
     max_bytes = _get_max_stream_file_size_bytes(max_size_mb)
-    if os.path.getsize(source_path) > max_bytes:
+    file_size = os.path.getsize(source_path)
+    
+    if file_size > max_bytes:
+        logger.warning(f"save_stream_file: file too large ({file_size} bytes, max {max_bytes} bytes): {source_path}")
         return None
 
-    cache_path = Path(_get_cache_dir(cache_dir))
-    cache_path.mkdir(parents=True, exist_ok=True)
+    try:
+        cache_path = Path(_get_cache_dir(cache_dir))
+        cache_path.mkdir(parents=True, exist_ok=True)
 
-    token = uuid.uuid4().hex
-    safe_name = os.path.basename(source_path).replace(" ", "_")
-    target_path = cache_path / f"{token}_{safe_name}"
-    shutil.copy2(source_path, target_path)
+        token = uuid.uuid4().hex
+        safe_name = os.path.basename(source_path).replace(" ", "_")
+        target_path = cache_path / f"{token}_{safe_name}"
+        shutil.copy2(source_path, target_path)
 
-    base_url = _get_base_url(base_url)
-    return {
-        "token": token,
-        "file_path": str(target_path),
-        "stream_url": f"{base_url}/stream/{token}",
-        "player_url": f"{base_url}/player/{token}",
-    }
+        base_url = _get_base_url(base_url)
+        result = {
+            "token": token,
+            "file_path": str(target_path),
+            "stream_url": f"{base_url}/stream/{token}",
+            "player_url": f"{base_url}/player/{token}",
+        }
+        logger.info(f"save_stream_file: successfully saved {source_path} to {target_path} with URLs: {result['stream_url']}")
+        return result
+    except Exception as e:
+        logger.error(f"save_stream_file: error copying file {source_path} to cache: {e}", exc_info=True)
+        return None
 
 
 def get_archive_path(archive_path=None):

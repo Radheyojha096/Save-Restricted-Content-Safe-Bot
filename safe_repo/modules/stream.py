@@ -198,25 +198,33 @@ async def build_public_stream_link(message, media_file=None):
     """Build a public stream link from local cache when possible, else fall back to a Telegram channel post for large or unsupported files."""
     if media_file and os.path.exists(media_file):
         try:
+            logger.info(f"build_public_stream_link: attempting to cache file {media_file}")
             saved = save_stream_file(media_file)
             if saved:
+                logger.info(f"build_public_stream_link: successfully cached file, returning URLs")
                 return {
                     "source": "cache",
                     "player_url": saved["player_url"],
                     "stream_url": saved["stream_url"],
                     "token": saved["token"],
                 }
-        except Exception:
-            pass
+            else:
+                logger.warning(f"build_public_stream_link: save_stream_file returned None")
+        except Exception as e:
+            logger.error(f"build_public_stream_link: error caching file: {e}", exc_info=True)
 
+    logger.info(f"build_public_stream_link: falling back to Telegram channel posting")
     result = await post_to_stream_channel(message)
     if result:
+        logger.info(f"build_public_stream_link: successfully posted to channel, returning Telegram URLs")
         return {
             "source": "channel",
             "player_url": result["embed"],
             "stream_url": result["link"],
             "token": None,
         }
+    else:
+        logger.error(f"build_public_stream_link: both caching and channel posting failed")
     return None
 
 
@@ -320,7 +328,9 @@ async def send_stream_link(sender, message, caption_prefix="🎬 **Stream Link:*
 async def handle_direct_media(client, message):
     """Generate a public stream link for any media sent directly to the bot."""
     try:
+        logger.info(f"handle_direct_media: received media message from {message.chat.id}")
         if not has_media_payload(message):
+            logger.debug(f"handle_direct_media: message does not have media payload")
             return
 
         chat_id = message.chat.id
@@ -328,6 +338,8 @@ async def handle_direct_media(client, message):
             chat_id,
             format_progress_bar(15, "Processing media", "Starting download"),
         )
+        logger.info(f"handle_direct_media: sent status message {status_message.id}")
+        
         media_file = await download_media_payload(
             client,
             message,
@@ -335,12 +347,15 @@ async def handle_direct_media(client, message):
             progress_message_id=status_message.id,
         )
         if not media_file:
+            logger.error(f"handle_direct_media: failed to download media")
             await app.edit_message_text(
                 chat_id,
                 status_message.id,
                 "⚠️ Media download fail ho gaya.\n\nPlease try again in a moment.",
             )
             return
+
+        logger.info(f"handle_direct_media: successfully downloaded media to {media_file}")
 
         try:
             await app.edit_message_text(
@@ -353,6 +368,7 @@ async def handle_direct_media(client, message):
 
         public_link = await build_public_stream_link(message, media_file)
         if not public_link:
+            logger.error(f"handle_direct_media: build_public_stream_link returned None")
             try:
                 os.remove(media_file)
             except Exception:
@@ -360,6 +376,8 @@ async def handle_direct_media(client, message):
             await app.edit_message_text(chat_id, status_message.id, format_failure_message())
             return
 
+        logger.info(f"handle_direct_media: successfully generated stream link: {public_link['stream_url']}")
+        
         metadata = extract_stream_metadata(message, fallback_title=os.path.basename(media_file))
         study_url = build_public_study_link(metadata)
         append_stream_link(
@@ -374,6 +392,7 @@ async def handle_direct_media(client, message):
         await archive_stream_link(message, public_link['player_url'], public_link['stream_url'], study_url=study_url)
 
         text = build_stream_reply_text(public_link, study_url=study_url)
+        logger.info(f"handle_direct_media: sending final reply message")
         await app.edit_message_text(chat_id, status_message.id, text)
 
         try:
@@ -381,8 +400,11 @@ async def handle_direct_media(client, message):
         except Exception:
             pass
     except Exception as e:
-        logger.error(f"handle_direct_media failed: {e}")
-        await app.send_message(chat_id, f"⚠️ Error: {str(e)}")
+        logger.error(f"handle_direct_media failed: {e}", exc_info=True)
+        try:
+            await app.send_message(chat_id, f"⚠️ Error: {str(e)}")
+        except Exception:
+            pass
 
 
 @app.on_message(filters.forwarded)
