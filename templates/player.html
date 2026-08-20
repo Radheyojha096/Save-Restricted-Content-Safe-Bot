@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}{{ video.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .fullscreen-player {
+        background: #000;
+    }
+    .player-controls {
+        background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 50%, transparent 100%);
+    }
+    .control-btn {
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .control-btn:hover {
+        transform: scale(1.15);
+        filter: brightness(1.2);
+    }
+    .speed-option {
+        transition: all 0.3s ease;
+    }
+    .speed-option:hover {
+        background: rgba(59, 130, 246, 0.2);
+    }
+    .speed-option.active {
+        background: rgba(59, 130, 246, 0.3);
+        color: #60a5fa;
+    }
+    .pip-btn {
+        transition: all 0.3s ease;
+    }
+    .pip-btn:hover {
+        background: rgba(255,255,255,0.2);
+    }
+    .quality-option {
+        transition: all 0.3s ease;
+    }
+    .quality-option:hover {
+        background: rgba(255,255,255,0.1);
+    }
+    .quality-option.active {
+        background: rgba(59, 130, 246, 0.3);
+        color: #60a5fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fullscreen-player fixed inset-0 z-50 flex items-center justify-center">
+    <video id="fullscreen-player" controls autoplay playsinline class="w-full h-full max-h-screen">
+        <source src="{{ video.stream_url }}" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
+    <!-- Custom Controls Overlay -->
+    <div class="player-controls absolute inset-0 flex flex-col justify-end p-6 pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-500" id="player-controls">
+        <!-- Top Bar -->
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h2 class="text-white font-semibold text-lg mb-1">{{ video.title }}</h2>
+                <p class="text-slate-400 text-sm">{{ video.subject }} · {{ video.category }}</p>
+            </div>
+            <div class="flex gap-2 pointer-events-auto">
+                <button onclick="togglePip()" class="pip-btn w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white" title="Picture in Picture">
+                    <i class="fas fa-external-link-square-alt"></i>
+                </button>
+                <button onclick="window.close()" class="pip-btn w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white" title="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom Controls -->
+        <div class="flex items-center gap-4 pointer-events-auto">
+            <!-- Speed Selector -->
+            <div class="relative">
+                <button onclick="toggleSpeedMenu()" class="control-btn px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-medium flex items-center gap-2">
+                    <span id="current-speed">1x</span>
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </button>
+                <div id="speed-menu" class="hidden absolute bottom-full mb-2 left-0 bg-slate-800/90 backdrop-blur-md rounded-xl overflow-hidden shadow-xl border border-white/10 min-w-[80px]">
+                    <button onclick="setSpeed(0.5)" class="speed-option w-full px-4 py-2 text-white text-sm text-left">0.5x</button>
+                    <button onclick="setSpeed(0.75)" class="speed-option w-full px-4 py-2 text-white text-sm text-left">0.75x</button>
+                    <button onclick="setSpeed(1)" class="speed-option w-full px-4 py-2 text-white text-sm text-left active">1x</button>
+                    <button onclick="setSpeed(1.25)" class="speed-option w-full px-4 py-2 text-white text-sm text-left">1.25x</button>
+                    <button onclick="setSpeed(1.5)" class="speed-option w-full px-4 py-2 text-white text-sm text-left">1.5x</button>
+                    <button onclick="setSpeed(2)" class="speed-option w-full px-4 py-2 text-white text-sm text-left">2x</button>
+                    <button onclick="setSpeed(4)" class="speed-option w-full px-4 py-2 text-white text-sm text-left">4x</button>
+                </div>
+            </div>
+
+            <!-- Quality Selector -->
+            <div class="relative">
+                <button onclick="toggleQualityMenu()" class="control-btn px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-medium flex items-center gap-2">
+                    <i class="fas fa-cog text-xs"></i>
+                    Quality
+                </button>
+                <div id="quality-menu" class="hidden absolute bottom-full mb-2 left-0 bg-slate-800/90 backdrop-blur-md rounded-xl overflow-hidden shadow-xl border border-white/10 min-w-[120px]">
+                    <button class="quality-option active w-full px-4 py-2 text-white text-sm text-left">Auto</button>
+                    <button class="quality-option w-full px-4 py-2 text-white text-sm text-left">1080p</button>
+                    <button class="quality-option w-full px-4 py-2 text-white text-sm text-left">720p</button>
+                    <button class="quality-option w-full px-4 py-2 text-white text-sm text-left">480p</button>
+                    <button class="quality-option w-full px-4 py-2 text-white text-sm text-left">360p</button>
+                </div>
+            </div>
+
+            <!-- Spacer -->
+            <div class="flex-1"></div>
+
+            <!-- Action Links -->
+            <a href="{{ video.stream_url }}" target="_blank" class="control-btn w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white" title="Open Stream">
+                <i class="fas fa-external-link-alt text-sm"></i>
+            </a>
+            <button onclick="copyLink()" class="control-btn w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white" title="Copy Link">
+                <i class="fas fa-copy text-sm"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const player = document.getElementById('fullscreen-player');
+
+    function toggleSpeedMenu() {
+        document.getElementById('speed-menu').classList.toggle('hidden');
+        document.getElementById('quality-menu').classList.add('hidden');
+    }
+
+    function toggleQualityMenu() {
+        document.getElementById('quality-menu').classList.toggle('hidden');
+        document.getElementById('speed-menu').classList.add('hidden');
+    }
+
+    function setSpeed(speed) {
+        if (player) {
+            player.playbackRate = speed;
+            document.getElementById('current-speed').textContent = speed + 'x';
+        }
+        document.querySelectorAll('.speed-option').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent.includes(speed + 'x')) {
+                btn.classList.add('active');
+            }
+        });
+        document.getElementById('speed-menu').classList.add('hidden');
+    }
+
+    function togglePip() {
+        if (document.pictureInPictureElement) {
+            document.exitPictureInPicture();
+        } else if (player.requestPictureInPicture) {
+            player.requestPictureInPicture();
+        }
+    }
+
+    function copyLink() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            showToast('Link copied to clipboard!', 'success');
+        });
+    }
+
+    // Close menus when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.relative')) {
+            document.getElementById('speed-menu').classList.add('hidden');
+            document.getElementById('quality-menu').classList.add('hidden');
+        }
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === ' ' && player) {
+            e.preventDefault();
+            if (player.paused) player.play(); else player.pause();
+        }
+        if (e.key === 'f' && player) {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                document.documentElement.requestFullscreen();
+            }
+        }
+    });
+</script>
+{% endblock %}

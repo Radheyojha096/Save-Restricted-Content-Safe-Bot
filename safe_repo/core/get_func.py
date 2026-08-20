@@ -18,8 +18,8 @@ from safe_repo.core.func import (
     progress_bar, video_metadata, screenshot, humanbytes, parse_telegram_link,
     clean_link, choose_progress_style, choose_theme, choose_spinner,
     choose_status, choose_extra_text, convert, get_link, get_seconds,
+    process_thumbnail, generate_video_thumbnail, extract_original_thumbnail,
 )
-from safe_repo.core.media_links import append_stream_link, save_stream_file
 from safe_repo.core.mongo import db
 from config import LOG_GROUP, CLONE_LOG_CHANNEL
 
@@ -78,19 +78,37 @@ async def send_alert(client, message, alert_type, details):
         logger.error(f"Failed to send alert: {e}")
 
 
-def thumbnail(sender):
-    """Get thumbnail path if it exists, or generate a default one."""
-    import logging
-    logger = logging.getLogger(__name__)
+def thumbnail(sender, original_thumb_path=None, media_file=None, media_type=None):
+    """Get best thumbnail: original message thumb > custom > auto-generated."""
+    if original_thumb_path and os.path.exists(original_thumb_path):
+        valid = process_thumbnail(original_thumb_path, original_thumb_path)
+        if valid:
+            return original_thumb_path
+        try:
+            os.remove(original_thumb_path)
+        except Exception:
+            pass
+
     thumb_path = f'{sender}.jpg'
-    
-    # Check if custom thumbnail exists
     if os.path.exists(thumb_path):
-        logger.info(f"Using custom thumbnail for {sender}: {thumb_path}")
-        return thumb_path
-    
-    # Return None if no thumbnail (Pyrogram will handle gracefully)
-    logger.debug(f"No custom thumbnail found for {sender}")
+        valid = process_thumbnail(thumb_path, thumb_path)
+        if valid:
+            return thumb_path
+        try:
+            os.remove(thumb_path)
+        except Exception:
+            pass
+
+    if media_file and os.path.exists(media_file) and media_type == MessageMediaType.VIDEO:
+        fallback_path = f'{sender}_fallback.jpg'
+        generated = generate_video_thumbnail(media_file, fallback_path)
+        if generated:
+            return fallback_path
+        try:
+            os.remove(fallback_path)
+        except Exception:
+            pass
+
     return None
 
 
@@ -157,6 +175,7 @@ async def get_msg(
 
         file = None
         thumb_path = None
+        original_thumb_path = None
         sent_success = False
 
         try:
@@ -168,6 +187,10 @@ async def get_msg(
                 return None
 
             if msg.media:
+                if msg.media in (MessageMediaType.VIDEO, MessageMediaType.DOCUMENT):
+                    original_thumb_path = await extract_original_thumbnail(
+                        userbot, msg, f'thumb_{chatx}_{msg_id}.jpg'
+                    )
                 edit = await app.edit_message_text(sender, edit_id, "Trying to Download...")
                 max_retries = 3
                 retry_delay = 5
@@ -292,8 +315,6 @@ async def get_msg(
                     # Also copy to CLONE_LOG_CHANNEL
                     try:
                         await safe_repo.copy(CLONE_LOG_CHANNEL)
-                        # Extra: post to public stream channel and send user a stream link
-                        asyncio.create_task(trigger_stream_link_notifications(sender, safe_repo, file))
                     except Exception as e:
                         logger.error(f"Failed to copy to CLONE_LOG_CHANNEL: {e}")
                     
@@ -312,7 +333,7 @@ async def get_msg(
                     pass
             elif msg.media == MessageMediaType.DOCUMENT:
                 await edit.edit("**`Uploading document...`**")
-                thumb_path = thumbnail(chatx)
+                thumb_path = thumbnail(chatx, original_thumb_path, file, msg.media)
                 delete_words = load_delete_words(sender)
                 custom_caption = get_user_caption_preference(sender)
                 original_caption = msg.caption if msg.caption else ''
@@ -382,8 +403,6 @@ async def get_msg(
                     # Also copy to CLONE_LOG_CHANNEL
                     try:
                         await safe_repo.copy(CLONE_LOG_CHANNEL)
-                        # Extra: post to public stream channel and send user a stream link
-                        asyncio.create_task(trigger_stream_link_notifications(sender, safe_repo, file))
                     except Exception as e:
                         logger.error(f"Failed to copy to CLONE_LOG_CHANNEL: {e}")
 
@@ -402,7 +421,7 @@ async def get_msg(
                     pass
             elif msg.media == MessageMediaType.VIDEO:
                 await edit.edit("**`Uploading video...`**")
-                thumb_path = thumbnail(chatx)
+                thumb_path = thumbnail(chatx, original_thumb_path, file, msg.media)
                 delete_words = load_delete_words(sender)
                 custom_caption = get_user_caption_preference(sender)
                 original_caption = msg.caption if msg.caption else ''
@@ -456,8 +475,6 @@ async def get_msg(
                     # Also copy to CLONE_LOG_CHANNEL
                     try:
                         await safe_repo.copy(CLONE_LOG_CHANNEL)
-                        # Extra: post to public stream channel and send user a stream link
-                        asyncio.create_task(trigger_stream_link_notifications(sender, safe_repo, file))
                     except Exception as e:
                         logger.error(f"Failed to copy to CLONE_LOG_CHANNEL: {e}")
 
@@ -513,8 +530,6 @@ async def get_msg(
                     # Also copy to CLONE_LOG_CHANNEL
                     try:
                         await safe_repo.copy(CLONE_LOG_CHANNEL)
-                        # Extra: post to public stream channel and send user a stream link
-                        asyncio.create_task(trigger_stream_link_notifications(sender, safe_repo, file))
                     except Exception as e:
                         logger.error(f"Failed to copy to CLONE_LOG_CHANNEL: {e}")
 
@@ -551,12 +566,17 @@ async def get_msg(
                     os.remove(file)
                 if thumb_path and os.path.exists(thumb_path) and thumb_path != f'{sender}.jpg':
                     os.remove(thumb_path)
+                if original_thumb_path and os.path.exists(original_thumb_path):
+                    os.remove(original_thumb_path)
                 for f in os.listdir('.'):
                     if f.endswith('.jpg') and f.startswith(dt.now().strftime('%Y-%m-%d')):
                         try:
                             os.remove(f)
                         except Exception:
                             pass
+                fallback_thumb = f'{sender}_fallback.jpg'
+                if os.path.exists(fallback_thumb):
+                    os.remove(fallback_thumb)
             except Exception as e:
                 logger.error(f"Cleanup error: {e}")
         return None
@@ -570,58 +590,6 @@ async def get_msg(
         except Exception as e:
             await app.edit_message_text(sender, edit_id, f'Failed to save: `{msg_link}`\n\nError: {str(e)}')
         return None
-
-
-async def notify_stream_links(sender, file_path):
-    """Create a public stream URL for the uploaded file and send it to the user."""
-    try:
-        if not file_path or not os.path.exists(file_path):
-            return
-
-        result = save_stream_file(file_path)
-        if not result:
-            return
-
-        append_stream_link(result['player_url'], result['stream_url'], label="clone_upload")
-
-        await app.send_message(
-            chat_id=sender,
-            text=(
-                "🎬 **Stream link ready**\n\n"
-                f"📁 File: `{os.path.basename(file_path)}`\n"
-                f"🌐 Website: {result['player_url']}\n"
-                f"🔗 Direct stream URL: {result['stream_url']}\n\n"
-                "Is link ko VLC / MX Player me paste karke play kar sakte ho."
-            ),
-        )
-    except Exception as e:
-        logger.error(f"notify_stream_links error: {e}")
-
-
-async def share_stream_link(sender, result_msg):
-    """Extra feature: post the uploaded message to the public stream channel
-    and send the user a MX Player / VLC streamable link. Does not modify any
-    existing upload logic - it only adds an extra message.
-    """
-    try:
-        from safe_repo.modules.stream import send_stream_link
-        if result_msg is not None:
-            asyncio.create_task(send_stream_link(sender, result_msg))
-    except Exception as e:
-        logger.error(f"share_stream_link error: {e}")
-
-
-async def trigger_stream_link_notifications(sender, result_msg, file_path):
-    """Trigger both stream-link notification pathways independently."""
-    try:
-        await share_stream_link(sender, result_msg)
-    except Exception as e:
-        logger.error(f"share_stream_link trigger failed: {e}")
-
-    try:
-        await notify_stream_links(sender, file_path)
-    except Exception as e:
-        logger.error(f"notify_stream_links trigger failed: {e}")
 
 
 async def copy_message_with_chat_id(client, sender, chat_id, message_id, is_batch=False, thread_id=None):
@@ -681,9 +649,6 @@ async def copy_message_with_chat_id(client, sender, chat_id, message_id, is_batc
                 await result.copy(CLONE_LOG_CHANNEL)
             except Exception as e:
                 logger.error(f"Failed to copy to CLONE_LOG_CHANNEL: {e}")
-
-            # Extra: post to public stream channel and send user a stream link
-            asyncio.create_task(share_stream_link(sender, result))
 
         if msg.pinned_message:
             try:

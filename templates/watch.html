@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}{{ video.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .cinema-mode {
+        background: #000;
+    }
+    .video-player-wrapper {
+        position: relative;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    }
+    .video-player-wrapper video {
+        width: 100%;
+        display: block;
+        background: #000;
+        border-radius: 16px;
+    }
+    .progress-bar {
+        height: 4px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 2px;
+        overflow: hidden;
+        cursor: pointer;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6, #06b6d4);
+        border-radius: 2px;
+        transition: width 0.1s linear;
+    }
+    .action-btn {
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .action-btn:hover {
+        transform: scale(1.1);
+    }
+    .related-card {
+        transition: all 0.3s ease;
+    }
+    .related-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.3);
+    }
+    .share-btn {
+        transition: all 0.3s ease;
+    }
+    .share-btn:hover {
+        transform: translateY(-2px);
+    }
+    .toast {
+        animation: slideInRight 0.3s ease-out;
+    }
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Video Player -->
+    <div class="mb-8">
+        <div class="video-player-wrapper">
+            <video id="main-player" controls autoplay playsinline class="w-full">
+                <source src="{{ video.stream_url }}" type="video/mp4" />
+                Your browser does not support the video tag.
+            </video>
+        </div>
+
+        <!-- Watch Progress -->
+        <div class="mt-4 flex items-center gap-4">
+            <div class="flex-1 progress-bar" id="watch-progress">
+                <div class="progress-fill" id="watch-progress-fill" style="width: 0%"></div>
+            </div>
+            <span class="text-slate-400 text-sm" id="watch-progress-text">0%</span>
+        </div>
+    </div>
+
+    <!-- Video Info & Actions -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div class="lg:col-span-2">
+            <div class="glass-card rounded-2xl p-6 md:p-8">
+                <h1 class="font-display text-2xl md:text-3xl font-bold text-white mb-4">{{ video.title }}</h1>
+
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <span class="px-4 py-1.5 rounded-full bg-electric/20 text-electric text-sm font-medium border border-electric/30">
+                        <i class="fas fa-book mr-1"></i>{{ video.subject }}
+                    </span>
+                    <span class="px-4 py-1.5 rounded-full bg-purple/20 text-purple text-sm font-medium border border-purple/30">
+                        <i class="fas fa-tag mr-1"></i>{{ video.category }}
+                    </span>
+                    <span class="px-4 py-1.5 rounded-full bg-cyan/20 text-cyan text-sm font-medium border border-cyan/30">
+                        <i class="fas fa-folder mr-1"></i>{{ video.folder or 'General' }}
+                    </span>
+                </div>
+
+                <p class="text-slate-300 leading-relaxed mb-6">{{ video.description or 'Study video from the Safe Repo media archive.' }}</p>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="toggleFavorite(this)" class="action-btn flex items-center gap-2 px-5 py-2.5 rounded-full glass-card text-slate-300 hover:text-pink hover:border-pink/30">
+                        <i class="far fa-heart"></i>
+                        <span>Favorite</span>
+                    </button>
+                    <button onclick="shareVideo()" class="share-btn flex items-center gap-2 px-5 py-2.5 rounded-full glass-card text-slate-300 hover:text-cyan hover:border-cyan/30">
+                        <i class="fas fa-share-alt"></i>
+                        <span>Share</span>
+                    </button>
+                    <button onclick="watchLater()" class="action-btn flex items-center gap-2 px-5 py-2.5 rounded-full glass-card text-slate-300 hover:text-yellow-400 hover:border-yellow-400/30">
+                        <i class="far fa-clock"></i>
+                        <span>Watch Later</span>
+                    </button>
+                    <a href="{{ video.player_url }}" target="_blank" class="action-btn flex items-center gap-2 px-5 py-2.5 rounded-full glass-card text-slate-300 hover:text-electric hover:border-electric/30">
+                        <i class="fas fa-external-link-alt"></i>
+                        <span>Open Player</span>
+                    </a>
+                    <a href="{{ video.stream_url }}?download=1" target="_blank" class="action-btn flex items-center gap-2 px-5 py-2.5 rounded-full glass-card text-slate-300 hover:text-green-400 hover:border-green-400/30">
+                        <i class="fas fa-download"></i>
+                        <span>Download</span>
+                    </a>
+                    <button onclick="copyLink()" class="action-btn flex items-center gap-2 px-5 py-2.5 rounded-full glass-card text-slate-300 hover:text-purple hover:border-purple/30">
+                        <i class="fas fa-copy"></i>
+                        <span>Copy Link</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metadata Sidebar -->
+        <div class="lg:col-span-1">
+            <div class="glass-card rounded-2xl p-6 sticky top-28">
+                <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="fas fa-info-circle text-electric"></i>
+                    Video Info
+                </h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center py-2 border-b border-white/5">
+                        <span class="text-slate-400 text-sm">Subject</span>
+                        <span class="text-white text-sm font-medium">{{ video.subject }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/5">
+                        <span class="text-slate-400 text-sm">Category</span>
+                        <span class="text-white text-sm font-medium">{{ video.category }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/5">
+                        <span class="text-slate-400 text-sm">Folder</span>
+                        <span class="text-white text-sm font-medium">{{ video.folder or 'General' }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/5">
+                        <span class="text-slate-400 text-sm">Date</span>
+                        <span class="text-white text-sm font-medium">{{ video.date or 'N/A' }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/5">
+                        <span class="text-slate-400 text-sm">Views</span>
+                        <span class="text-white text-sm font-medium">{{ video.views }} views</span>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-white/5">
+                    <h4 class="text-slate-400 text-sm mb-3">Quick Actions</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <a href="{{ video.stream_url }}" target="_blank" class="flex items-center justify-center gap-2 py-2 rounded-xl bg-electric/10 text-electric text-sm hover:bg-electric/20 transition-colors">
+                            <i class="fas fa-link text-xs"></i> Stream
+                        </a>
+                        <a href="{{ video.player_url }}" target="_blank" class="flex items-center justify-center gap-2 py-2 rounded-xl bg-purple/10 text-purple text-sm hover:bg-purple/20 transition-colors">
+                            <i class="fas fa-play text-xs"></i> Player
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Related Videos -->
+    {% if related_videos %}
+    <section class="mb-16 section-animate">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="font-display text-2xl font-bold text-white flex items-center gap-3">
+                <i class="fas fa-random text-cyan"></i>
+                More in {{ video.subject }}
+            </h2>
+            <div class="h-px flex-1 bg-gradient-to-r from-cyan/50 to-transparent ml-4"></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for item in related_videos %}
+            <a href="/study/watch/{{ item.token }}" class="related-card glass-card rounded-2xl p-5 block group">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan to-electric flex items-center justify-center text-white font-bold flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                        {{ (item.subject or 'Study')[:2].upper() }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-medium text-white truncate group-hover:text-cyan transition-colors duration-300">{{ item.title }}</h3>
+                        <p class="text-slate-400 text-sm mt-1">{{ item.category }} · {{ item.folder or 'General' }}</p>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Comments Placeholder -->
+    <section class="mb-16 section-animate">
+        <div class="glass-card rounded-2xl p-8 text-center">
+            <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-comments text-2xl text-slate-500"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">Comments</h3>
+            <p class="text-slate-400">Discussion coming soon. Stay tuned for community features.</p>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Watch progress tracking
+    const player = document.getElementById('main-player');
+    const progressBar = document.getElementById('watch-progress');
+    const progressFill = document.getElementById('watch-progress-fill');
+    const progressText = document.getElementById('watch-progress-text');
+
+    if (player && progressFill && progressText) {
+        player.addEventListener('timeupdate', () => {
+            if (player.duration) {
+                const percent = (player.currentTime / player.duration) * 100;
+                progressFill.style.width = percent + '%';
+                progressText.textContent = Math.round(percent) + '%';
+            }
+        });
+
+        if (progressBar) {
+            progressBar.addEventListener('click', (e) => {
+                const rect = progressBar.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                if (player.duration) {
+                    player.currentTime = percent * player.duration;
+                }
+            });
+        }
+    }
+
+    function toggleFavorite(btn) {
+        const icon = btn.querySelector('i');
+        if (icon.classList.contains('far')) {
+            icon.classList.remove('far');
+            icon.classList.add('fas');
+            btn.classList.add('text-pink', 'border-pink/30');
+            showToast('Added to favorites', 'success');
+        } else {
+            icon.classList.remove('fas');
+            icon.classList.add('far');
+            btn.classList.remove('text-pink', 'border-pink/30');
+            showToast('Removed from favorites', 'info');
+        }
+        btn.classList.add('animate-pulse');
+        setTimeout(() => btn.classList.remove('animate-pulse'), 500);
+    }
+
+    function shareVideo() {
+        const url = window.location.href;
+        if (navigator.share) {
+            navigator.share({ title: '{{ video.title }}', url: url });
+        } else {
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('Link copied to clipboard!', 'success');
+            });
+        }
+    }
+
+    function watchLater() {
+        showToast('Added to Watch Later', 'info');
+    }
+
+    function copyLink() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            showToast('Link copied to clipboard!', 'success');
+        });
+    }
+</script>
+{% endblock %}

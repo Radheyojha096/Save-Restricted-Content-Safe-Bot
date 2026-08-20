@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}Study{% endblock %}
+
+{% block extra_head %}
+<style>
+    .study-hero {
+        background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #0f766e 100%);
+        background-size: 200% 200%;
+        animation: gradientShift 8s ease infinite;
+    }
+    @keyframes gradientShift {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+    .filter-pill {
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .filter-pill:hover {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+    .filter-pill.active {
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    }
+    .study-card {
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .study-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(59, 130, 246, 0.2);
+    }
+    .progress-ring {
+        transform: rotate(-90deg);
+    }
+    .progress-ring-circle {
+        transition: stroke-dashoffset 0.5s ease;
+    }
+    .action-btn {
+        transition: all 0.3s ease;
+    }
+    .action-btn:hover {
+        transform: scale(1.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Study Hero -->
+<section class="mb-12">
+    <div class="study-hero rounded-3xl p-8 md:p-10 relative overflow-hidden shadow-2xl">
+        <div class="absolute inset-0 bg-black/20"></div>
+        <div class="relative z-10">
+            <div class="flex items-center gap-2 text-slate-300 text-sm mb-3">
+                <a href="/" class="hover:text-white transition-colors">Home</a>
+                <i class="fas fa-chevron-right text-xs"></i>
+                <span>Study</span>
+                {% if filter_summary.subject %}
+                <i class="fas fa-chevron-right text-xs"></i>
+                <span class="text-white">{{ filter_summary.subject }}</span>
+                {% endif %}
+            </div>
+            <h1 class="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3">Study Platform</h1>
+            <p class="text-slate-200 text-lg max-w-2xl">Browse videos by subject, folder, category, and recent uploads in one clean place.</p>
+
+            {% if filter_summary.subject or filter_summary.date or filter_summary.q or filter_summary.folder %}
+            <div class="glass-card inline-block px-4 py-2 rounded-full mt-4">
+                <span class="text-slate-300 text-sm">
+                    <i class="fas fa-filter mr-2 text-cyan"></i>
+                    Showing: {% if filter_summary.q %}Search "{{ filter_summary.q }}"{% endif %}{% if filter_summary.subject %} · {{ filter_summary.subject }}{% endif %}{% if filter_summary.folder %} · {{ filter_summary.folder }}{% endif %}{% if filter_summary.date %} · {{ filter_summary.date }}{% endif %}
+                </span>
+            </div>
+            {% endif %}
+
+            <form method="get" action="/study" class="mt-6 flex flex-wrap gap-3">
+                <div class="flex-1 min-w-[200px] relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" name="q" value="{{ request.args.get('q','') }}" placeholder="Search title / topic"
+                        class="w-full pl-10 pr-4 py-3 rounded-full bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-cyan focus:bg-white/15 backdrop-blur-sm transition-all duration-300" />
+                </div>
+                <input type="text" name="subject" value="{{ request.args.get('subject','') }}" placeholder="Subject"
+                    class="px-4 py-3 rounded-full bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-cyan focus:bg-white/15 backdrop-blur-sm w-32 transition-all duration-300" />
+                <input type="text" name="folder" value="{{ request.args.get('folder','') }}" placeholder="Folder"
+                    class="px-4 py-3 rounded-full bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-cyan focus:bg-white/15 backdrop-blur-sm w-32 hidden md:block transition-all duration-300" />
+                <input type="text" name="date" value="{{ request.args.get('date','') }}" placeholder="Date"
+                    class="px-4 py-3 rounded-full bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-cyan focus:bg-white/15 backdrop-blur-sm w-36 hidden lg:block transition-all duration-300" />
+                <button type="submit" class="px-6 py-3 rounded-full bg-white text-deep font-semibold hover:bg-slate-100 transition-all duration-300 hover:shadow-lg hover:shadow-white/20 hover:-translate-y-0.5">
+                    Filter
+                </button>
+                <a href="/study" class="px-6 py-3 rounded-full bg-white/10 border border-white/20 text-white font-semibold hover:bg-white/20 transition-all duration-300 text-center">
+                    Clear
+                </a>
+            </form>
+        </div>
+    </div>
+</section>
+
+<!-- Filter Pills -->
+<section class="mb-8 section-animate">
+    <div class="flex flex-wrap gap-3">
+        {% for playlist in playlists %}
+        <a href="/study?subject={{ playlist.subject|urlencode }}&folder={{ playlist.folder|urlencode }}"
+            class="filter-pill glass-card px-5 py-2.5 rounded-full text-sm font-medium text-slate-300 hover:text-white hover:border-electric/50 flex items-center gap-2">
+            <i class="fas fa-folder text-xs text-cyan"></i>
+            {{ playlist.subject }} / {{ playlist.folder }}
+            <span class="px-2 py-0.5 rounded-full bg-electric/20 text-electric text-xs">{{ playlist.videos|length }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Filter Categories -->
+<section class="mb-10 section-animate">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-book text-electric"></i>
+                Subjects
+            </h3>
+            <div class="flex flex-wrap gap-2">
+                {% for subject in subjects %}
+                <a href="/study?subject={{ subject.name|urlencode }}" class="filter-pill px-4 py-2 rounded-full bg-electric/10 text-electric text-sm hover:bg-electric/20 border border-electric/20 hover:border-electric/40">
+                    {{ subject.name }} <span class="text-electric/60">({{ subject.count }})</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-tag text-purple"></i>
+                Categories
+            </h3>
+            <div class="flex flex-wrap gap-2">
+                {% for category in categories %}
+                <span class="filter-pill px-4 py-2 rounded-full bg-purple/10 text-purple text-sm border border-purple/20">
+                    {{ category.name }} <span class="text-purple/60">({{ category.count }})</span>
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-folder text-cyan"></i>
+                Folders
+            </h3>
+            <div class="flex flex-wrap gap-2">
+                {% for folder in folders %}
+                <span class="filter-pill px-4 py-2 rounded-full bg-cyan/10 text-cyan text-sm border border-cyan/20">
+                    {{ folder.name }} <span class="text-cyan/60">({{ folder.count }})</span>
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Video Grid -->
+{% if videos %}
+<section class="mb-16 section-animate">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="font-display text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+            <i class="fas fa-play-circle text-electric"></i>
+            Videos
+        </h2>
+        <span class="text-slate-400 text-sm">{{ videos|length }} videos found</span>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for item in videos %}
+        <div class="study-card glass-card rounded-2xl overflow-hidden group">
+            <div class="h-36 bg-gradient-to-br from-deep via-slate-800 to-deep flex items-center justify-center relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-electric/10 to-purple/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <span class="text-4xl font-bold text-white/10 group-hover:text-white/20 transition-all duration-500 group-hover:scale-110 transition-transform duration-500">{{ (item.subject or 'Study')[:2].upper() }}</span>
+                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <div class="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                        <i class="fas fa-play text-white text-xl ml-1"></i>
+                    </div>
+                </div>
+                {% if item.featured %}
+                <span class="absolute top-3 left-3 px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-xs backdrop-blur-sm border border-yellow-500/30">
+                    <i class="fas fa-star mr-1"></i>Featured
+                </span>
+                {% endif %}
+                {% if item.trending %}
+                <span class="absolute top-3 right-3 px-2 py-1 rounded-full bg-red-500/20 text-red-400 text-xs backdrop-blur-sm border border-red-500/30">
+                    <i class="fas fa-fire mr-1"></i>Trending
+                </span>
+                {% endif %}
+            </div>
+            <div class="p-5">
+                <h3 class="font-semibold text-white mb-1 line-clamp-2 group-hover:text-electric transition-colors duration-300">{{ item.title }}</h3>
+                <p class="text-slate-400 text-sm mb-3 line-clamp-1">{{ item.description or 'Study video' }}</p>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-slate-500">{{ item.subject }} · {{ item.folder or 'General' }}</span>
+                    <div class="flex gap-2">
+                        <a href="{{ item.watch_url }}" class="action-btn w-8 h-8 rounded-full bg-electric/20 text-electric flex items-center justify-center hover:bg-electric/30" title="Watch">
+                            <i class="fas fa-play text-xs"></i>
+                        </a>
+                        <a href="{{ item.player_url }}" class="action-btn w-8 h-8 rounded-full bg-purple/20 text-purple flex items-center justify-center hover:bg-purple/30" title="Player">
+                            <i class="fas fa-expand text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+                <!-- Progress indicator -->
+                <div class="mt-3 h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-electric to-cyan rounded-full" style="width: {{ (loop.index * 10) if loop.index <= 10 else 100 }}%"></div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Featured Section in Study -->
+{% if featured %}
+<section class="mb-16 section-animate">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="font-display text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+            <i class="fas fa-star text-yellow-400"></i>
+            Featured
+        </h2>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for item in featured %}
+        <div class="study-card glass-card rounded-2xl p-6">
+            <div class="flex items-start gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-semibold text-white group-hover:text-yellow-400 transition-colors">{{ item.title }}</h3>
+                    <p class="text-slate-400 text-sm">{{ item.subject }} · {{ item.category }}</p>
+                </div>
+            </div>
+            <p class="text-slate-400 text-sm mb-4">Popular pick for quick revision.</p>
+            <div class="flex gap-2">
+                <a href="{{ item.watch_url }}" class="flex-1 text-center py-2 rounded-xl bg-electric/20 text-electric text-sm font-medium hover:bg-electric/30 transition-colors">
+                    <i class="fas fa-play mr-1"></i>Watch
+                </a>
+                <a href="{{ item.player_url }}" class="flex-1 text-center py-2 rounded-xl bg-purple/20 text-purple text-sm font-medium hover:bg-purple/30 transition-colors">
+                    <i class="fas fa-expand mr-1"></i>Player
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Latest & Trending -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+    {% if latest %}
+    <section class="section-animate">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="font-display text-xl font-bold text-white flex items-center gap-3">
+                <i class="fas fa-clock text-electric"></i>
+                Latest
+            </h2>
+        </div>
+        <div class="space-y-3">
+            {% for item in latest %}
+            <a href="{{ item.watch_url }}" class="study-card glass-card rounded-xl p-4 flex items-center gap-4 block group">
+                <div class="w-10 h-10 rounded-lg bg-electric/20 flex items-center justify-center text-electric flex-shrink-0">
+                    <i class="fas fa-play text-sm"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-medium text-white truncate group-hover:text-electric transition-colors">{{ item.title }}</h4>
+                    <p class="text-slate-400 text-xs">{{ item.subject }} · {{ item.folder or 'General' }}</p>
+                </div>
+                <span class="text-slate-500 text-xs flex-shrink-0">{{ item.date or 'Recent' }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if trending %}
+    <section class="section-animate">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="font-display text-xl font-bold text-white flex items-center gap-3">
+                <span class="trending-fire">🔥</span>
+                Trending
+            </h2>
+        </div>
+        <div class="space-y-3">
+            {% for item in trending %}
+            <a href="{{ item.watch_url }}" class="study-card glass-card rounded-xl p-4 flex items-center gap-4 block group">
+                <div class="w-10 h-10 rounded-lg bg-pink/20 flex items-center justify-center text-pink flex-shrink-0">
+                    <i class="fas fa-fire text-sm"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-medium text-white truncate group-hover:text-pink transition-colors">{{ item.title }}</h4>
+                    <p class="text-slate-400 text-xs">{{ item.views }} views · {{ item.subject }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

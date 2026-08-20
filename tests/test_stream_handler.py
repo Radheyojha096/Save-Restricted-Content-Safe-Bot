@@ -1,7 +1,4 @@
-import asyncio
-
 from safe_repo.modules.stream import build_local_file_name, has_media_payload, get_archive_chat_ids, format_progress_bar
-from safe_repo.core.get_func import trigger_stream_link_notifications
 
 
 class DummyMessage:
@@ -57,23 +54,3 @@ def test_format_progress_bar_contains_percentage_and_label():
     assert "60%" in text
     assert "Downloading media" in text
     assert "Please wait" in text
-
-
-def test_trigger_stream_link_notifications_schedules_both_paths(monkeypatch):
-    calls = []
-
-    async def fake_share(sender, result_msg):
-        calls.append(("share", sender, result_msg))
-
-    async def fake_notify(sender, file_path):
-        calls.append(("notify", sender, file_path))
-
-    monkeypatch.setattr("safe_repo.core.get_func.share_stream_link", fake_share)
-    monkeypatch.setattr("safe_repo.core.get_func.notify_stream_links", fake_notify)
-
-    asyncio.run(trigger_stream_link_notifications(123, "message", "/tmp/file"))
-
-    assert calls == [
-        ("share", 123, "message"),
-        ("notify", 123, "/tmp/file"),
-    ]

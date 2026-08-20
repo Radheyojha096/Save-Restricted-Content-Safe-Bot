@@ -42,8 +42,19 @@ async def schedule_expiry_check():
 import sys
 
 import asyncio
-from safe_repo.core.get_func import send_alert
+from safe_repo.core.media_links import run_full_cleanup
 from config import CLONE_LOG_CHANNEL
+
+async def schedule_cleanup_task():
+    logger.info("Storage cleanup task started (runs every 7 hours)")
+    while True:
+        try:
+            removed = run_full_cleanup(max_age_hours=7)
+            if removed:
+                logger.info(f"Storage cleanup completed: removed {removed} old items")
+        except Exception as e:
+            logger.error(f"Storage cleanup error: {e}")
+        await asyncio.sleep(7 * 3600)
 
 async def safe_repo_boot():
     try:
@@ -71,6 +82,7 @@ async def safe_repo_boot():
         # Start background tasks
         asyncio.create_task(schedule_expiry_check())
         asyncio.create_task(keep_alive_task())
+        asyncio.create_task(schedule_cleanup_task())
 
         # Start the Pyrogram client
         # Handle 409 Conflict: if another instance is logged in with the same

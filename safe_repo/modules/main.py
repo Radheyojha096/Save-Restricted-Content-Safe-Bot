@@ -17,6 +17,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+awaiting_thumbnail = set()
+
 
 
 @app.on_message(filters.regex(r'https?://[^\s]+') & ~filters.command("batch") & ~filters.reply)
@@ -227,7 +229,8 @@ async def callback_query_handler(_, callback_query):
         else:
             await callback_query.answer("You are not logged in")
     elif callback_query.data == 'setthumb':
-        await callback_query.answer('Please send the photo you want to set as the thumbnail.')
+        awaiting_thumbnail.add(user_id)
+        await callback_query.answer('Thumbnail set karne ke liye abhi photo bhejo.')
     elif callback_query.data == 'reset':
         try:
             # Clear delete words for this user
@@ -243,6 +246,32 @@ async def callback_query_handler(_, callback_query):
             await callback_query.answer('Thumbnail removed successfully!')
         except FileNotFoundError:
             await callback_query.answer("No thumbnail found to remove.")
+
+
+@app.on_message(filters.photo & filters.private)
+async def thumbnail_photo_handler(_, message):
+    user_id = message.from_user.id
+    if user_id not in awaiting_thumbnail:
+        return
+
+    try:
+        await message.reply_text("Thumbnail process ho raha hai, thodi der wait karo...")
+        thumb_path = f'{user_id}.jpg'
+        downloaded = await message.download(file_name=thumb_path)
+        if downloaded and os.path.exists(downloaded):
+            ok = process_thumbnail(downloaded, thumb_path)
+            if ok:
+                await message.reply_text("Thumbnail set ho gaya!")
+            else:
+                os.remove(thumb_path)
+                await message.reply_text("Thumbnail set nahi ho paya. Image valid nahi thi. Doosri photo try karo.")
+        else:
+            await message.reply_text("Download fail ho gaya. Phir se try karo.")
+    except Exception as e:
+        logger.error(f"Thumbnail photo handler error: {e}")
+        await message.reply_text(f"Error: {str(e)}")
+    finally:
+        awaiting_thumbnail.discard(user_id)
 
 
 @app.on_message(filters.command("batch"))

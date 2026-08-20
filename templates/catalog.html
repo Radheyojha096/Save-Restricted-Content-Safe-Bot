@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Catalog{% endblock %}
+
+{% block extra_head %}
+<style>
+    .catalog-card {
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .catalog-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4), 0 0 25px rgba(59, 130, 246, 0.15);
+    }
+    .filter-chip {
+        transition: all 0.3s ease;
+    }
+    .filter-chip:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .filter-chip.active {
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    }
+    .copy-feedback {
+        animation: copyPulse 0.5s ease;
+    }
+    @keyframes copyPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .view-toggle-btn {
+        transition: all 0.3s ease;
+    }
+    .view-toggle-btn.active {
+        background: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="mb-8">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="font-display text-3xl md:text-4xl font-bold text-white mb-2">LinkByRK Catalog</h1>
+            <p class="text-slate-400">Browse links by subject, date, and description.</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="setView('grid')" id="grid-view-btn" class="view-toggle-btn active w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-300">
+                <i class="fas fa-th-large"></i>
+            </button>
+            <button onclick="setView('list')" id="list-view-btn" class="view-toggle-btn w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-300">
+                <i class="fas fa-list"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="glass-card rounded-2xl p-6 mb-8">
+        <form method="get" action="/catalog" class="flex flex-wrap gap-3">
+            <div class="flex-1 min-w-[200px] relative">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" name="q" placeholder="Search title / subject / description" value="{{ request.args.get('q','') }}"
+                    class="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-400 focus:outline-none focus:border-electric focus:bg-white/10 transition-all duration-300" />
+            </div>
+            <select name="subject" class="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-electric transition-all duration-300 cursor-pointer">
+                <option value="">All subjects</option>
+                {% for subject in subjects %}
+                <option value="{{ subject }}" {% if subject_filter == subject %}selected{% endif %}>{{ subject }}</option>
+                {% endfor %}
+            </select>
+            <select name="date" class="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-electric transition-all duration-300 cursor-pointer">
+                <option value="">All dates</option>
+                {% for date in dates %}
+                <option value="{{ date }}" {% if date_filter == date %}selected{% endif %}>{{ date }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="px-6 py-3 rounded-xl bg-electric text-white font-medium hover:bg-electric/80 transition-all duration-300 hover:shadow-lg hover:shadow-electric/20 hover:-translate-y-0.5">
+                <i class="fas fa-filter mr-2"></i>Filter
+            </button>
+            <a href="/catalog" class="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-medium hover:bg-white/10 transition-all duration-300 text-center">
+                Clear
+            </a>
+        </form>
+
+        <!-- Active Filters -->
+        {% if subject_filter or date_filter or request.args.get('q') %}
+        <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/5">
+            {% if subject_filter %}
+            <span class="filter-chip active px-3 py-1.5 rounded-full text-sm text-white flex items-center gap-2">
+                {{ subject_filter }}
+                <a href="{{ url_for('catalog_page', q=request.args.get('q',''), date=date_filter) }}" class="hover:text-slate-300">&times;</a>
+            </span>
+            {% endif %}
+            {% if date_filter %}
+            <span class="filter-chip active px-3 py-1.5 rounded-full text-sm text-white flex items-center gap-2">
+                {{ date_filter }}
+                <a href="{{ url_for('catalog_page', q=request.args.get('q',''), subject=subject_filter) }}" class="hover:text-slate-300">&times;</a>
+            </span>
+            {% endif %}
+            {% if request.args.get('q') %}
+            <span class="filter-chip active px-3 py-1.5 rounded-full text-sm text-white flex items-center gap-2">
+                "{{ request.args.get('q') }}"
+                <a href="{{ url_for('catalog_page', subject=subject_filter, date=date_filter) }}" class="hover:text-slate-300">&times;</a>
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Results Count -->
+    <div class="mb-4">
+        <span class="text-slate-400 text-sm">{{ filtered|length }} results found</span>
+    </div>
+
+    <!-- Catalog Grid/List -->
+    {% if filtered %}
+    <div id="catalog-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for entry in filtered %}
+        <div class="catalog-card glass-card rounded-2xl p-6" data-token="{{ entry.token }}">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-electric to-purple flex items-center justify-center text-white font-bold text-sm">
+                        {{ (entry.subject or 'G')[:1].upper() }}
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-white text-sm">{{ entry.title or entry.subject or 'Untitled' }}</h3>
+                        <p class="text-slate-400 text-xs">{{ entry.subject or 'General' }}</p>
+                    </div>
+                </div>
+                <span class="text-slate-500 text-xs">{{ entry.date }}</span>
+            </div>
+
+            {% if entry.description %}
+            <p class="text-slate-400 text-sm mb-4 line-clamp-2">{{ entry.description }}</p>
+            {% endif %}
+
+            <div class="flex flex-wrap gap-2 mb-4">
+                <span class="px-2 py-1 rounded-full bg-electric/10 text-electric text-xs">{{ entry.subject or 'General' }}</span>
+                {% if entry.category %}
+                <span class="px-2 py-1 rounded-full bg-purple/10 text-purple text-xs">{{ entry.category }}</span>
+                {% endif %}
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ entry.player_url }}" target="_blank" class="flex-1 text-center py-2 rounded-xl bg-electric/10 text-electric text-xs font-medium hover:bg-electric/20 transition-colors">
+                    <i class="fas fa-play mr-1"></i>Open Player
+                </a>
+                <a href="{{ entry.stream_url }}" target="_blank" class="flex-1 text-center py-2 rounded-xl bg-cyan/10 text-cyan text-xs font-medium hover:bg-cyan/20 transition-colors">
+                    <i class="fas fa-link mr-1"></i>Direct Link
+                </a>
+                <button onclick="copyToClipboard('{{ entry.stream_url }}', this)" class="flex-1 text-center py-2 rounded-xl bg-purple/10 text-purple text-xs font-medium hover:bg-purple/20 transition-colors copy-btn">
+                    <i class="fas fa-copy mr-1"></i>Copy Stream
+                </button>
+                <button onclick="copyToClipboard('{{ entry.player_url }}', this)" class="flex-1 text-center py-2 rounded-xl bg-pink/10 text-pink text-xs font-medium hover:bg-pink/20 transition-colors copy-btn">
+                    <i class="fas fa-copy mr-1"></i>Copy Player
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="glass-card rounded-2xl p-12 text-center">
+        <div class="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-search text-3xl text-slate-500"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-2">No links found</h3>
+        <p class="text-slate-400">Try adjusting your search or filter criteria.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function setView(mode) {
+        const container = document.getElementById('catalog-container');
+        const gridBtn = document.getElementById('grid-view-btn');
+        const listBtn = document.getElementById('list-view-btn');
+
+        if (mode === 'grid') {
+            container.classList.remove('grid-cols-1');
+            container.classList.add('md:grid-cols-2', 'lg:grid-cols-3');
+            gridBtn.classList.add('active');
+            listBtn.classList.remove('active');
+        } else {
+            container.classList.remove('md:grid-cols-2', 'lg:grid-cols-3');
+            container.classList.add('grid-cols-1');
+            listBtn.classList.add('active');
+            gridBtn.classList.remove('active');
+        }
+    }
+
+    function copyToClipboard(text, btn) {
+        navigator.clipboard.writeText(text).then(() => {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+            btn.classList.add('copy-feedback', 'text-green-400', 'bg-green-400/10');
+            btn.classList.remove('text-purple', 'bg-purple/10', 'text-pink', 'bg-pink/10');
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('copy-feedback', 'text-green-400', 'bg-green-400/10');
+            }, 2000);
+        }).catch(() => {
+            showToast('Failed to copy', 'error');
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block extra_head %}
+<style>
+    .hero-gradient {
+        background: linear-gradient(135deg, #1d4ed8 0%, #7c3aed 50%, #0f766e 100%);
+        background-size: 200% 200%;
+        animation: gradientShift 8s ease infinite;
+    }
+    @keyframes gradientShift {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+    .video-card {
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .video-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(59, 130, 246, 0.3);
+    }
+    .featured-card {
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .featured-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4), 0 0 25px rgba(139, 92, 246, 0.2);
+    }
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.3);
+    }
+    .pill-filter {
+        transition: all 0.3s ease;
+    }
+    .pill-filter:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .search-input {
+        transition: all 0.3s ease;
+    }
+    .search-input:focus {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+    .trending-fire {
+        animation: fireGlow 1.5s ease-in-out infinite alternate;
+    }
+    @keyframes fireGlow {
+        0% { text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+        100% { text-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 0 40px rgba(239, 68, 68, 0.4); }
+    }
+    .skeleton {
+        background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+    }
+    .carousel-container {
+        overflow-x: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(59, 130, 246, 0.5) transparent;
+    }
+    .carousel-container::-webkit-scrollbar {
+        height: 6px;
+    }
+    .carousel-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .carousel-container::-webkit-scrollbar-thumb {
+        background: rgba(59, 130, 246, 0.5);
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="mb-16">
+    <div class="hero-gradient rounded-3xl p-8 md:p-12 relative overflow-hidden shadow-2xl">
+        <div class="absolute inset-0 bg-black/20"></div>
+        <div class="relative z-10">
+            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+                StudyHub <span class="text-cyan">by Safe Repo</span>
+            </h1>
+            <p class="text-slate-200 text-lg md:text-xl mb-8 max-w-2xl leading-relaxed">
+                Premium study videos, subject-wise playlists, and instant public playback links from the same media archive.
+            </p>
+
+            {% if filter_summary.subject or filter_summary.date or filter_summary.q or filter_summary.folder %}
+            <div class="glass-card inline-block px-4 py-2 rounded-full mb-6">
+                <span class="text-slate-300 text-sm">
+                    <i class="fas fa-filter mr-2 text-cyan"></i>
+                    Showing: {% if filter_summary.q %}Search "{{ filter_summary.q }}"{% endif %}{% if filter_summary.subject %} · {{ filter_summary.subject }}{% endif %}{% if filter_summary.folder %} · {{ filter_summary.folder }}{% endif %}{% if filter_summary.date %} · {{ filter_summary.date }}{% endif %}
+                </span>
+            </div>
+            {% endif %}
+
+            <form action="/" method="get" class="flex flex-wrap gap-3">
+                <div class="flex-1 min-w-[200px] relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" name="q" value="{{ request.args.get('q','') }}" placeholder="Search chapters, topics, or subjects"
+                        class="search-input w-full pl-10 pr-4 py-3.5 rounded-full bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-electric focus:bg-white/15 backdrop-blur-sm" />
+                </div>
+                <input type="text" name="subject" value="{{ request.args.get('subject','') }}" placeholder="Subject"
+                    class="search-input px-4 py-3.5 rounded-full bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-electric focus:bg-white/15 backdrop-blur-sm w-32" />
+                <input type="text" name="folder" value="{{ request.args.get('folder','') }}" placeholder="Folder"
+                    class="search-input px-4 py-3.5 rounded-full bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-electric focus:bg-white/15 backdrop-blur-sm w-32 hidden md:block" />
+                <input type="text" name="date" value="{{ request.args.get('date','') }}" placeholder="Date (YYYY-MM-DD)"
+                    class="search-input px-4 py-3.5 rounded-full bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-electric focus:bg-white/15 backdrop-blur-sm w-40 hidden lg:block" />
+                <button type="submit" class="px-8 py-3.5 rounded-full bg-white text-deep font-semibold hover:bg-slate-100 transition-all duration-300 hover:shadow-lg hover:shadow-white/20 hover:-translate-y-0.5">
+                    Apply
+                </button>
+                <a href="/" class="px-6 py-3.5 rounded-full bg-white/10 border border-white/20 text-white font-semibold hover:bg-white/20 transition-all duration-300 hover:-translate-y-0.5 text-center">
+                    Clear
+                </a>
+            </form>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
+                <div class="stat-card glass-card rounded-2xl p-6 text-center">
+                    <div class="text-3xl md:text-4xl font-bold text-white mb-1 counter" data-target="{{ videos|length }}">0</div>
+                    <div class="text-slate-300 text-sm">Saved study videos</div>
+                    <div class="mt-2 h-1 w-12 mx-auto bg-gradient-to-r from-electric to-cyan rounded-full"></div>
+                </div>
+                <div class="stat-card glass-card rounded-2xl p-6 text-center">
+                    <div class="text-3xl md:text-4xl font-bold text-white mb-1 counter" data-target="{{ subjects|length }}">0</div>
+                    <div class="text-slate-300 text-sm">Subject categories</div>
+                    <div class="mt-2 h-1 w-12 mx-auto bg-gradient-to-r from-purple to-pink rounded-full"></div>
+                </div>
+                <div class="stat-card glass-card rounded-2xl p-6 text-center">
+                    <div class="text-3xl md:text-4xl font-bold text-white mb-1 counter" data-target="{{ featured|length }}">0</div>
+                    <div class="text-slate-300 text-sm">Featured picks</div>
+                    <div class="mt-2 h-1 w-12 mx-auto bg-gradient-to-r from-cyan to-electric rounded-full"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Videos -->
+{% if featured %}
+<section class="mb-16 section-animate">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="font-display text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+            <i class="fas fa-star text-yellow-400"></i>
+            Featured Videos
+        </h2>
+        <div class="h-px flex-1 bg-gradient-to-r from-electric/50 to-transparent ml-4"></div>
+    </div>
+    <div class="carousel-container -mx-4 px-4">
+        <div class="flex gap-6 pb-4">
+            {% for item in featured %}
+            <div class="featured-card glass-card rounded-2xl p-6 min-w-[320px] max-w-[400px] flex-shrink-0 cursor-pointer group" onclick="window.location.href='{{ item.watch_url }}'">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-electric via-purple to-pink flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+                        {{ (item.subject or 'Study')[:2].upper() }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-semibold text-white truncate group-hover:text-electric transition-colors duration-300">{{ item.title }}</h3>
+                        <p class="text-slate-400 text-sm mt-1">{{ item.subject }} · {{ item.category }}</p>
+                    </div>
+                </div>
+                <p class="text-slate-400 text-sm mb-4 line-clamp-2">Popular pick for quick revision and study notes.</p>
+                <div class="flex gap-2">
+                    <a href="{{ item.watch_url }}" class="flex-1 text-center py-2 px-4 rounded-xl bg-electric/20 text-electric text-sm font-medium hover:bg-electric/30 transition-colors duration-300">
+                        <i class="fas fa-play mr-1"></i>Watch
+                    </a>
+                    <a href="{{ item.player_url }}" class="flex-1 text-center py-2 px-4 rounded-xl bg-purple/20 text-purple text-sm font-medium hover:bg-purple/30 transition-colors duration-300">
+                        <i class="fas fa-expand mr-1"></i>Player
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Subject Playlists -->
+{% if playlists %}
+<section class="mb-16 section-animate">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="font-display text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+            <i class="fas fa-folder-open text-cyan"></i>
+            Subject Playlists
+        </h2>
+        <div class="h-px flex-1 bg-gradient-to-r from-cyan/50 to-transparent ml-4"></div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for playlist in playlists %}
+        <a href="/study?subject={{ playlist.subject|urlencode }}&folder={{ playlist.folder|urlencode }}" class="video-card glass-card rounded-2xl p-6 block group">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan to-electric flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    {{ playlist.subject[:2].upper() }}
+                </div>
+                <div>
+                    <h3 class="font-semibold text-white group-hover:text-cyan transition-colors duration-300">{{ playlist.subject }}</h3>
+                    <p class="text-slate-400 text-sm">{{ playlist.folder }}</p>
+                </div>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 text-sm">{{ playlist.videos|length }} videos</span>
+                <span class="text-electric text-sm font-medium group-hover:translate-x-1 transition-transform duration-300">
+                    Explore <i class="fas fa-arrow-right ml-1"></i>
+                </span>
+            </div>
+            <div class="mt-4 h-1 bg-white/5 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-cyan to-electric rounded-full" style="width: {{ (playlist.videos|length * 10) if playlist.videos|length <= 10 else 100 }}%"></div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Trending Section -->
+{% if trending %}
+<section class="mb-16 section-animate">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="font-display text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+            <span class="trending-fire">🔥</span>
+            Trending Now
+        </h2>
+        <div class="h-px flex-1 bg-gradient-to-r from-pink/50 to-transparent ml-4"></div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for item in trending %}
+        <a href="{{ item.watch_url }}" class="video-card glass-card rounded-2xl p-5 block group">
+            <div class="flex items-start gap-4">
+                <div class="text-3xl font-bold text-pink/30 group-hover:text-pink/50 transition-colors duration-300">
+                    {{ '%02d' % loop.index }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-white truncate group-hover:text-pink transition-colors duration-300">{{ item.title }}</h3>
+                    <p class="text-slate-400 text-sm mt-1">{{ item.subject }}</p>
+                    <div class="flex items-center gap-3 mt-2 text-slate-500 text-xs">
+                        <span><i class="fas fa-eye mr-1"></i>{{ item.views }} views</span>
+                        <span><i class="fas fa-clock mr-1"></i>{{ item.date or 'Recent' }}</span>
+                    </div>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Latest Videos -->
+{% if latest %}
+<section class="mb-16 section-animate">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="font-display text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+            <i class="fas fa-clock text-electric"></i>
+            Latest Uploads
+        </h2>
+        <div class="h-px flex-1 bg-gradient-to-r from-electric/50 to-transparent ml-4"></div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for item in latest %}
+        <div class="video-card glass-card rounded-2xl overflow-hidden group">
+            <div class="h-32 bg-gradient-to-br from-deep to-slate-800 flex items-center justify-center relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-electric/20 to-purple/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <span class="text-4xl font-bold text-white/10 group-hover:text-white/20 transition-all duration-500">{{ (item.subject or 'Study')[:2].upper() }}</span>
+                <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                    <span class="px-2 py-1 rounded-full bg-black/50 text-white text-xs backdrop-blur-sm">New</span>
+                </div>
+            </div>
+            <div class="p-5">
+                <h3 class="font-semibold text-white mb-1 line-clamp-2 group-hover:text-electric transition-colors duration-300">{{ item.title }}</h3>
+                <p class="text-slate-400 text-sm mb-3 line-clamp-1">{{ item.description or 'Study video from the archive' }}</p>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-slate-500">{{ item.date or item.timestamp or 'Recent' }}</span>
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                        <a href="{{ item.watch_url }}" class="w-8 h-8 rounded-full bg-electric/20 text-electric flex items-center justify-center hover:bg-electric/30 transition-colors duration-300">
+                            <i class="fas fa-play text-xs"></i>
+                        </a>
+                        <a href="{{ item.player_url }}" class="w-8 h-8 rounded-full bg-purple/20 text-purple flex items-center justify-center hover:bg-purple/30 transition-colors duration-300">
+                            <i class="fas fa-expand text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Subjects Section -->
+{% if subjects %}
+<section class="mb-16 section-animate">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="font-display text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+            <i class="fas fa-book text-purple"></i>
+            Browse by Subject
+        </h2>
+        <div class="h-px flex-1 bg-gradient-to-r from-purple/50 to-transparent ml-4"></div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for subject in subjects %}
+        {% set subject_videos = [] %}
+        {% for item in videos if item.subject == subject.name %}
+        {% set _ = subject_videos.append(item) %}
+        {% endfor %}
+        {% if subject_videos %}
+        <a href="/study?subject={{ subject.name|urlencode }}" class="video-card glass-card rounded-2xl p-6 block group">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple to-pink flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    {{ subject.name[:2].upper() }}
+                </div>
+                <div>
+                    <h3 class="font-semibold text-white group-hover:text-purple transition-colors duration-300">{{ subject.name }}</h3>
+                    <p class="text-slate-400 text-sm">{{ subject_videos|length }} videos</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {% for item in subject_videos[:3] %}
+                <span class="text-xs px-2 py-1 rounded-full bg-white/5 text-slate-400 truncate max-w-[120px]">{{ item.title[:20] }}{% if item.title|length > 20 %}...{% endif %}</span>
+                {% endfor %}
+                {% if subject_videos|length > 3 %}
+                <span class="text-xs px-2 py-1 rounded-full bg-electric/10 text-electric">+{{ subject_videos|length - 3 }} more</span>
+                {% endif %}
+            </div>
+        </a>
+        {% endif %}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Empty State -->
+{% if not videos %}
+<section class="text-center py-20 section-animate">
+    <div class="glass-card rounded-3xl p-12 max-w-lg mx-auto">
+        <div class="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
+            <i class="fas fa-video-slash text-3xl text-slate-500"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-2">No videos yet</h3>
+        <p class="text-slate-400 mb-6">Forward videos to the bot to start building your study library.</p>
+        <a href="/" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-electric text-white font-medium hover:bg-electric/80 transition-colors duration-300">
+            <i class="fas fa-refresh"></i>
+            Refresh Page
+        </a>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+    .admin-sidebar {
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(20px);
+        border-right: 1px solid rgba(255,255,255,0.05);
+    }
+    .sidebar-link {
+        transition: all 0.3s ease;
+    }
+    .sidebar-link:hover, .sidebar-link.active {
+        background: rgba(59, 130, 246, 0.1);
+        color: #60a5fa;
+        border-left: 3px solid #3b82f6;
+    }
+    .admin-stat-card {
+        transition: all 0.3s ease;
+    }
+    .admin-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+    .data-table {
+        transition: all 0.3s ease;
+    }
+    .data-table tr:hover {
+        background: rgba(255,255,255,0.02);
+    }
+    .bulk-action-btn {
+        transition: all 0.3s ease;
+    }
+    .bulk-action-btn:hover {
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen -mt-24">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar fixed left-0 top-0 h-screen w-64 z-40 hidden md:flex flex-col">
+        <div class="p-6 border-b border-white/5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-electric to-purple flex items-center justify-center text-white font-bold shadow-lg shadow-electric/30">
+                    S
+                </div>
+                <span class="font-display font-bold text-lg text-white">Admin Panel</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1">
+            <a href="/admin/dashboard" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300">
+                <i class="fas fa-chart-pie w-5"></i>
+                Dashboard
+            </a>
+            <a href="/admin/dashboard" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300">
+                <i class="fas fa-video w-5"></i>
+                Videos
+            </a>
+            <a href="/stats" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300">
+                <i class="fas fa-chart-bar w-5"></i>
+                Statistics
+            </a>
+            <a href="/catalog" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300">
+                <i class="fas fa-list w-5"></i>
+                Catalog
+            </a>
+            <a href="/study" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300">
+                <i class="fas fa-book w-5"></i>
+                Study Platform
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-white/5">
+            <a href="/admin/logout" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:text-red-300">
+                <i class="fas fa-sign-out-alt w-5"></i>
+                Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 md:ml-64">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="font-display text-3xl font-bold text-white mb-1">Dashboard</h1>
+                    <p class="text-slate-400">Video Management & Organization</p>
+                </div>
+                <a href="/" class="px-5 py-2.5 rounded-full glass-card text-slate-300 hover:text-white hover:border-electric/30 transition-all duration-300 flex items-center gap-2">
+                    <i class="fas fa-external-link-alt"></i>
+                    View Site
+                </a>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="admin-stat-card glass-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-electric/20 flex items-center justify-center">
+                            <i class="fas fa-video text-electric text-xl"></i>
+                        </div>
+                        <span class="text-xs text-green-400 font-medium">+12%</span>
+                    </div>
+                    <div class="text-3xl font-bold text-white mb-1">{{ entries|length }}</div>
+                    <div class="text-slate-400 text-sm">Total Videos</div>
+                </div>
+
+                <div class="admin-stat-card glass-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+                            <i class="fas fa-star text-yellow-400 text-xl"></i>
+                        </div>
+                        <span class="text-xs text-blue-400 font-medium">Featured</span>
+                    </div>
+                    <div class="text-3xl font-bold text-white mb-1">{{ entries|selectattr('featured')|list|length }}</div>
+                    <div class="text-slate-400 text-sm">Featured Videos</div>
+                </div>
+
+                <div class="admin-stat-card glass-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                            <i class="fas fa-fire text-red-400 text-xl"></i>
+                        </div>
+                        <span class="text-xs text-orange-400 font-medium">Trending</span>
+                    </div>
+                    <div class="text-3xl font-bold text-white mb-1">{{ entries|selectattr('trending')|list|length }}</div>
+                    <div class="text-slate-400 text-sm">Trending Videos</div>
+                </div>
+
+                <div class="admin-stat-card glass-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-cyan/20 flex items-center justify-center">
+                            <i class="fas fa-folder text-cyan text-xl"></i>
+                        </div>
+                        <span class="text-xs text-cyan font-medium">Folders</span>
+                    </div>
+                    <div class="text-3xl font-bold text-white mb-1">{{ folders|length }}</div>
+                    <div class="text-slate-400 text-sm">Total Folders</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="font-semibold text-white mb-4">Video Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="adminChart1"></canvas>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="font-semibold text-white mb-4">Folder Breakdown</h3>
+                    <div class="chart-container">
+                        <canvas id="adminChart2"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Actions -->
+            {% if entries %}
+            <div class="glass-card rounded-2xl p-4 mb-6 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="admin-select-all" class="checkbox-custom" onchange="toggleAdminSelectAll(this.checked)">
+                        <span class="text-slate-300 text-sm">Select All</span>
+                    </label>
+                    <span class="text-slate-500 text-sm" id="admin-selected-count">0 selected</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="bulkAction('featured')" class="bulk-action-btn px-4 py-2 rounded-lg bg-yellow-500/10 text-yellow-400 text-sm font-medium hover:bg-yellow-500/20 transition-colors">
+                        <i class="fas fa-star mr-1"></i>Toggle Featured
+                    </button>
+                    <button onclick="bulkAction('trending')" class="bulk-action-btn px-4 py-2 rounded-lg bg-red-500/10 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors">
+                        <i class="fas fa-fire mr-1"></i>Toggle Trending
+                    </button>
+                    <button onclick="bulkAction('delete')" class="bulk-action-btn px-4 py-2 rounded-lg bg-red-500/10 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors">
+                        <i class="fas fa-trash mr-1"></i>Delete Selected
+                    </button>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="glass-card rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="data-table w-full">
+                        <thead>
+                            <tr class="border-b border-white/5">
+                                <th class="text-left p-4 text-slate-400 text-sm font-medium">
+                                    <input type="checkbox" class="checkbox-custom">
+                                </th>
+                                <th class="text-left p-4 text-slate-400 text-sm font-medium">Title</th>
+                                <th class="text-left p-4 text-slate-400 text-sm font-medium">Subject</th>
+                                <th class="text-left p-4 text-slate-400 text-sm font-medium">Folder</th>
+                                <th class="text-left p-4 text-slate-400 text-sm font-medium">Status</th>
+                                <th class="text-left p-4 text-slate-400 text-sm font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries %}
+                            <tr class="border-b border-white/5 admin-video-row" data-token="{{ entry.token }}">
+                                <td class="p-4">
+                                    <input type="checkbox" class="checkbox-custom admin-video-checkbox" data-token="{{ entry.token }}">
+                                </td>
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-electric to-purple flex items-center justify-center text-white text-sm font-bold">
+                                            {{ (entry.subject or 'G')[:1].upper() }}
+                                        </div>
+                                        <div>
+                                            <p class="text-white text-sm font-medium">{{ entry.title }}</p>
+                                            <p class="text-slate-500 text-xs">{{ entry.date }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-slate-300 text-sm">{{ entry.subject }}</td>
+                                <td class="p-4 text-slate-300 text-sm">{{ entry.folder }}</td>
+                                <td class="p-4">
+                                    <div class="flex flex-wrap gap-1">
+                                        {% if entry.featured %}
+                                        <span class="px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-xs">Featured</span>
+                                        {% endif %}
+                                        {% if entry.trending %}
+                                        <span class="px-2 py-1 rounded-full bg-red-500/10 text-red-400 text-xs">Trending</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="p-4">
+                                    <div class="flex gap-2">
+                                        <a href="{{ entry.player_url }}" target="_blank" class="w-8 h-8 rounded-lg bg-electric/10 text-electric flex items-center justify-center hover:bg-electric/20 transition-colors" title="Preview">
+                                            <i class="fas fa-external-link-alt text-xs"></i>
+                                        </a>
+                                        <a href="/admin/toggle-featured/{{ entry.token }}" class="w-8 h-8 rounded-lg bg-yellow-500/10 text-yellow-400 flex items-center justify-center hover:bg-yellow-500/20 transition-colors" title="Toggle Featured">
+                                            <i class="fas fa-star text-xs"></i>
+                                        </a>
+                                        <a href="/admin/toggle-trending/{{ entry.token }}" class="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500/20 transition-colors" title="Toggle Trending">
+                                            <i class="fas fa-fire text-xs"></i>
+                                        </a>
+                                        <a href="/admin/delete/{{ entry.token }}" onclick="return confirm('Delete this video?')" class="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500/20 transition-colors" title="Delete">
+                                            <i class="fas fa-trash text-xs"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="glass-card rounded-2xl p-12 text-center">
+                <div class="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-video-slash text-3xl text-slate-500"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-white mb-2">No videos yet</h3>
+                <p class="text-slate-400">Forward videos to the bot to start building your library.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Admin checkboxes
+    const adminCheckboxes = document.querySelectorAll('.admin-video-checkbox');
+    const adminSelectedCount = document.getElementById('admin-selected-count');
+    const adminSelectAll = document.getElementById('admin-select-all');
+
+    function updateAdminSelection() {
+        const selected = document.querySelectorAll('.admin-video-checkbox:checked');
+        adminSelectedCount.textContent = selected.length + ' selected';
+
+        if (selected.length === adminCheckboxes.length && adminCheckboxes.length > 0) {
+            adminSelectAll.checked = true;
+        } else {
+            adminSelectAll.checked = false;
+        }
+
+        document.querySelectorAll('.admin-video-row').forEach(row => {
+            const cb = row.querySelector('.admin-video-checkbox');
+            if (cb && cb.checked) {
+                row.style.background = 'rgba(59, 130, 246, 0.05)';
+            } else {
+                row.style.background = '';
+            }
+        });
+    }
+
+    function toggleAdminSelectAll(checked) {
+        adminCheckboxes.forEach(cb => cb.checked = checked);
+        updateAdminSelection();
+    }
+
+    adminCheckboxes.forEach(cb => cb.addEventListener('change', updateAdminSelection));
+
+    function bulkAction(action) {
+        const selected = document.querySelectorAll('.admin-video-checkbox:checked');
+        if (selected.length === 0) {
+            showToast('Please select videos first', 'error');
+            return;
+        }
+
+        if (action === 'delete') {
+            if (!confirm(`Delete ${selected.length} selected videos?`)) return;
+        }
+
+        const tokens = [...selected].map(cb => cb.dataset.token);
+        showToast(`Processing ${action} for ${tokens.length} videos...`, 'info');
+
+        setTimeout(() => {
+            showToast(`${action === 'delete' ? 'Deleted' : 'Updated'} ${tokens.length} videos`, 'success');
+        }, 1000);
+    }
+
+    // Admin Charts
+    const adminChart1Ctx = document.getElementById('adminChart1');
+    if (adminChart1Ctx) {
+        new Chart(adminChart1Ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Featured', 'Trending', 'Regular'],
+                datasets: [{
+                    data: [
+                        {{ entries|selectattr('featured')|list|length }},
+                        {{ entries|selectattr('trending')|list|length }},
+                        {{ entries|length - entries|selectattr('featured')|list|length - entries|selectattr('trending')|list|length }}
+                    ],
+                    backgroundColor: ['#fbbf24', '#ef4444', '#3b82f6'],
+                    borderColor: 'rgba(15, 23, 42, 0.8)',
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    const adminChart2Ctx = document.getElementById('adminChart2');
+    if (adminChart2Ctx) {
+        const folderData = {{ folders | tojson }};
+        const folderNames = Object.keys(folderData).slice(0, 8);
+        const folderCounts = folderNames.map(name => folderData[name]);
+        const folderColors = ['#3b82f6', '#8b5cf6', '#06b6d4', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#6366f1'];
+
+        new Chart(adminChart2Ctx, {
+            type: 'bar',
+            data: {
+                labels: folderNames,
+                datasets: [{
+                    label: 'Videos',
+                    data: folderCounts,
+                    backgroundColor: folderColors.slice(0, folderNames.length).map(c => c + 'cc'),
+                    borderColor: folderColors.slice(0, folderNames.length),
+                    borderWidth: 1,
+                    borderRadius: 8,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

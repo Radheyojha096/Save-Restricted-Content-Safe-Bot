@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Batch Download{% endblock %}
+
+{% block extra_head %}
+<style>
+    .batch-card {
+        transition: all 0.3s ease;
+    }
+    .batch-card:hover {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    .batch-card.selected {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+    .checkbox-custom {
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        background: rgba(255,255,255,0.05);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    .checkbox-custom:checked {
+        background: #3b82f6;
+        border-color: #3b82f6;
+    }
+    .checkbox-custom:checked::after {
+        content: '✓';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .progress-bar-animated {
+        background: linear-gradient(90deg, #3b82f6, #06b6d4, #8b5cf6);
+        background-size: 200% 100%;
+        animation: shimmer 2s linear infinite;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    .select-all-checkbox {
+        transition: all 0.3s ease;
+    }
+    .select-all-checkbox:hover {
+        transform: scale(1.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="mb-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="font-display text-3xl md:text-4xl font-bold text-white mb-2 flex items-center gap-3">
+                <i class="fas fa-layer-group text-cyan"></i>
+                Batch Download
+            </h1>
+            <p class="text-slate-400">Select multiple videos to download as a ZIP archive</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="glass-card rounded-full px-5 py-2.5 flex items-center gap-3">
+                <span class="text-slate-400 text-sm">Selected:</span>
+                <span class="text-electric font-bold text-lg" id="selected-count">0</span>
+            </div>
+            <button id="download-btn" onclick="downloadSelected()" disabled class="px-6 py-2.5 rounded-full bg-electric text-white font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-electric/20 hover:-translate-y-0.5">
+                <i class="fas fa-download mr-2"></i>Download ZIP
+            </button>
+        </div>
+    </div>
+
+    <!-- Select All -->
+    <div class="glass-card rounded-2xl p-4 mb-6 flex items-center justify-between">
+        <label class="flex items-center gap-3 cursor-pointer select-all-checkbox">
+            <input type="checkbox" id="select-all" class="checkbox-custom" onchange="toggleSelectAll(this.checked)">
+            <span class="text-slate-300 font-medium">Select All Videos</span>
+            <span class="text-slate-500 text-sm">({{ videos|length }} videos)</span>
+        </label>
+        <div class="flex gap-2">
+            <button onclick="selectVisible()" class="px-4 py-2 rounded-lg glass-card text-slate-300 hover:text-white hover:border-electric/30 transition-all duration-300 text-sm">
+                Select Visible
+            </button>
+            <button onclick="clearSelection()" class="px-4 py-2 rounded-lg glass-card text-slate-300 hover:text-white hover:border-red-400/30 transition-all duration-300 text-sm">
+                Clear Selection
+            </button>
+        </div>
+    </div>
+
+    <!-- Video Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="batch-grid">
+        {% for item in videos %}
+        <div class="batch-card glass-card rounded-2xl overflow-hidden group" data-token="{{ item.token }}" data-title="{{ item.title }}">
+            <div class="p-4 flex items-start gap-4">
+                <input type="checkbox" class="checkbox-custom mt-1 video-checkbox" data-token="{{ item.token }}" onchange="updateSelection()">
+                <div class="flex-1 min-w-0">
+                    <div class="h-24 bg-gradient-to-br from-deep via-slate-800 to-deep rounded-xl flex items-center justify-center mb-3 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-cyan/10 to-electric/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <span class="text-3xl font-bold text-white/10">{{ (item.subject or 'Study')[:2].upper() }}</span>
+                    </div>
+                    <h3 class="font-semibold text-white text-sm mb-1 line-clamp-2">{{ item.title }}</h3>
+                    <p class="text-slate-400 text-xs">{{ item.subject }} · {{ item.folder or 'General' }}</p>
+                    <div class="flex items-center gap-2 mt-2">
+                        {% if item.featured %}
+                        <span class="text-xs text-yellow-400"><i class="fas fa-star"></i></span>
+                        {% endif %}
+                        {% if item.trending %}
+                        <span class="text-xs text-red-400"><i class="fas fa-fire"></i></span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Download Progress -->
+    <div id="download-progress" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center">
+        <div class="glass-card rounded-3xl p-8 max-w-md w-full mx-4 text-center">
+            <div class="w-20 h-20 rounded-full bg-electric/20 flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-download text-electric text-3xl animate-bounce"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">Preparing Download</h3>
+            <p class="text-slate-400 mb-6" id="download-status">Creating ZIP archive...</p>
+            <div class="w-full h-3 bg-white/5 rounded-full overflow-hidden mb-4">
+                <div id="download-progress-bar" class="progress-bar-animated h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <p class="text-slate-500 text-sm" id="download-percent">0%</p>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const checkboxes = document.querySelectorAll('.video-checkbox');
+    const selectedCountEl = document.getElementById('selected-count');
+    const downloadBtn = document.getElementById('download-btn');
+    const selectAllCheckbox = document.getElementById('select-all');
+
+    function updateSelection() {
+        const selected = document.querySelectorAll('.video-checkbox:checked');
+        selectedCountEl.textContent = selected.length;
+        downloadBtn.disabled = selected.length === 0;
+
+        if (selected.length === checkboxes.length && checkboxes.length > 0) {
+            selectAllCheckbox.checked = true;
+        } else {
+            selectAllCheckbox.checked = false;
+        }
+
+        // Update card styles
+        document.querySelectorAll('.batch-card').forEach(card => {
+            const checkbox = card.querySelector('.video-checkbox');
+            if (checkbox && checkbox.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+    }
+
+    function toggleSelectAll(checked) {
+        checkboxes.forEach(cb => {
+            cb.checked = checked;
+        });
+        updateSelection();
+    }
+
+    function selectVisible() {
+        checkboxes.forEach(cb => {
+            const card = cb.closest('.batch-card');
+            if (card) {
+                const rect = card.getBoundingClientRect();
+                if (rect.top < window.innerHeight && rect.bottom > 0) {
+                    cb.checked = true;
+                }
+            }
+        });
+        updateSelection();
+    }
+
+    function clearSelection() {
+        checkboxes.forEach(cb => {
+            cb.checked = false;
+        });
+        selectAllCheckbox.checked = false;
+        updateSelection();
+    }
+
+    function downloadSelected() {
+        const selected = document.querySelectorAll('.video-checkbox:checked');
+        if (selected.length === 0) return;
+
+        const progressModal = document.getElementById('download-progress');
+        const progressBar = document.getElementById('download-progress-bar');
+        const progressText = document.getElementById('download-percent');
+        const statusText = document.getElementById('download-status');
+
+        progressModal.classList.remove('hidden');
+
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(interval);
+                statusText.textContent = 'Download complete!';
+                progressText.textContent = '100%';
+                progressBar.style.width = '100%';
+
+                setTimeout(() => {
+                    progressModal.classList.add('hidden');
+                    showToast('ZIP download started!', 'success');
+                }, 1500);
+            } else {
+                progressBar.style.width = progress + '%';
+                progressText.textContent = Math.round(progress) + '%';
+                statusText.textContent = `Processing video ${Math.floor(progress / 10) + 1} of ${selected.length}...`;
+            }
+        }, 200);
+    }
+
+    // Initialize
+    updateSelection();
+</script>
+{% endblock %}

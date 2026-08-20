@@ -324,7 +324,6 @@ async def send_stream_link(sender, message, caption_prefix="🎬 **Stream Link:*
         logger.error(f"send_stream_link failed: {e}")
 
 
-@app.on_message(filters.media)
 async def handle_direct_media(client, message):
     """Generate a public stream link for any media sent directly to the bot."""
     try:

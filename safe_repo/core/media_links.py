@@ -1,12 +1,14 @@
 import json
 import os
+import re
 import shutil
 import uuid
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta
 from pathlib import Path
 from typing import Optional, Dict, List
 
 _STREAM_CACHE_DIR = None
+_CLEANUP_MAX_AGE_HOURS = 7
 
 
 def _get_shared_repo_dir():
@@ -216,3 +218,170 @@ def get_stream_entry(token, catalog_path=None):
         if str(entry.get("token", "")) == str(token):
             return entry
     return None
+
+
+def cleanup_old_stream_files(max_age_hours=None, cache_dir=None):
+    """Remove cached stream files older than max_age_hours."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    if max_age_hours is None:
+        max_age_hours = _CLEANUP_MAX_AGE_HOURS
+
+    cache_path = Path(_get_cache_dir(cache_dir))
+    if not cache_path.exists():
+        return 0
+
+    cutoff = dt.now().timestamp() - (max_age_hours * 3600)
+    removed = 0
+
+    for path in cache_path.iterdir():
+        if not path.is_file():
+            continue
+        try:
+            mtime = path.stat().st_mtime
+            if mtime < cutoff:
+                path.unlink(missing_ok=True)
+                removed += 1
+        except Exception as e:
+            logger.debug(f"Failed to cleanup cache file {path}: {e}")
+
+    if removed:
+        logger.info(f"Cleaned up {removed} old stream cache files (older than {max_age_hours}h)")
+    return removed
+
+
+def cleanup_old_catalog_entries(max_age_hours=None, catalog_path=None):
+    """Remove catalog entries older than max_age_hours."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    if max_age_hours is None:
+        max_age_hours = _CLEANUP_MAX_AGE_HOURS
+
+    catalog_file = Path(get_catalog_path(catalog_path))
+    if not catalog_file.exists():
+        return 0
+
+    cutoff = dt.now() - timedelta(hours=max_age_hours)
+    cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        entries = read_stream_entries(catalog_path=str(catalog_file))
+        original_count = len(entries)
+        filtered = []
+        for entry in entries:
+            ts = entry.get("timestamp", "")
+            try:
+                entry_time = dt.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                if entry_time >= cutoff:
+                    filtered.append(entry)
+            except Exception:
+                filtered.append(entry)
+
+        if len(filtered) < original_count:
+            catalog_file.write_text(
+                json.dumps(filtered, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            logger.info(f"Pruned {original_count - len(filtered)} old catalog entries (older than {max_age_hours}h)")
+            return original_count - len(filtered)
+    except Exception as e:
+        logger.error(f"Failed to cleanup catalog: {e}")
+    return 0
+
+
+def cleanup_old_archive_entries(max_age_hours=None, archive_path=None):
+    """Remove old entries from the stream links text archive."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    if max_age_hours is None:
+        max_age_hours = _CLEANUP_MAX_AGE_HOURS
+
+    archive_file = Path(get_archive_path(archive_path))
+    if not archive_file.exists():
+        return 0
+
+    cutoff = dt.now() - timedelta(hours=max_age_hours)
+    cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        content = archive_file.read_text(encoding="utf-8")
+        lines = content.splitlines()
+        kept = []
+        current_block = []
+        current_ts = None
+        entry_pattern = re.compile(r"^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]")
+
+        for line in lines:
+            match = entry_pattern.match(line)
+            if match:
+                ts_str = match.group(1)
+                if current_block and current_ts and current_ts >= cutoff_str:
+                    kept.extend(current_block)
+                    kept.append("")
+                current_block = [line]
+                current_ts = ts_str
+            else:
+                current_block.append(line)
+
+        if current_block and current_ts and current_ts >= cutoff_str:
+            kept.extend(current_block)
+            kept.append("")
+
+        new_content = "\n".join(kept).strip() + "\n" if kept else ""
+        if len(new_content) < len(content):
+            archive_file.write_text(new_content, encoding="utf-8")
+            removed_lines = len(lines) - len(new_content.splitlines())
+            logger.info(f"Pruned old archive entries (older than {max_age_hours}h)")
+            return removed_lines
+    except Exception as e:
+        logger.error(f"Failed to cleanup archive: {e}")
+    return 0
+
+
+def cleanup_orphaned_temp_files(max_age_hours=2, work_dir=None):
+    """Remove orphaned temp media files from the working directory."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    if work_dir is None:
+        work_dir = Path.cwd()
+    else:
+        work_dir = Path(work_dir)
+
+    cutoff = dt.now().timestamp() - (max_age_hours * 3600)
+    removed = 0
+    patterns = ("stream_",)
+
+    try:
+        for path in work_dir.iterdir():
+            if not path.is_file():
+                continue
+            try:
+                if any(str(path.name).startswith(p) for p in patterns):
+                    mtime = path.stat().st_mtime
+                    if mtime < cutoff:
+                        path.unlink(missing_ok=True)
+                        removed += 1
+            except Exception as e:
+                logger.debug(f"Failed to cleanup temp file {path}: {e}")
+    except Exception as e:
+        logger.error(f"Failed to scan work dir for temp files: {e}")
+
+    if removed:
+        logger.info(f"Cleaned up {removed} orphaned temp files (older than {max_age_hours}h)")
+    return removed
+
+
+def run_full_cleanup(max_age_hours=None):
+    """Run all cleanup tasks. Returns total removed items."""
+    if max_age_hours is None:
+        max_age_hours = _CLEANUP_MAX_AGE_HOURS
+    total = 0
+    total += cleanup_old_stream_files(max_age_hours=max_age_hours)
+    total += cleanup_old_catalog_entries(max_age_hours=max_age_hours)
+    total += cleanup_old_archive_entries(max_age_hours=max_age_hours)
+    total += cleanup_orphaned_temp_files(max_age_hours=max(1, max_age_hours // 3))
+    return total

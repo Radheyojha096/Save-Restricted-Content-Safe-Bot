@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block extra_head %}
+<style>
+    .password-strength-bar {
+        height: 4px;
+        border-radius: 2px;
+        transition: all 0.3s ease;
+        margin-top: 8px;
+    }
+    .strength-weak { background: #ef4444; width: 33%; }
+    .strength-medium { background: #f59e0b; width: 66%; }
+    .strength-strong { background: #10b981; width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center -mt-24">
+    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 rounded-3xl overflow-hidden shadow-2xl">
+        <!-- Left Side - Form -->
+        <div class="auth-card bg-slate-900/80 backdrop-blur-xl p-8 md:p-12">
+            <div class="max-w-md mx-auto">
+                <h3 class="font-display text-2xl font-bold text-white mb-2">Create account</h3>
+                <p class="text-slate-400 mb-8">Join StudyHub and start learning smarter</p>
+
+                <form method="post" class="space-y-5">
+                    <div>
+                        <label class="block text-slate-300 text-sm font-medium mb-2">Full Name</label>
+                        <div class="relative">
+                            <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="text" name="fullname" required
+                                class="input-field w-full pl-10 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none"
+                                placeholder="Enter your full name">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-300 text-sm font-medium mb-2">Email</label>
+                        <div class="relative">
+                            <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="email" name="email" required
+                                class="input-field w-full pl-10 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none"
+                                placeholder="you@example.com">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-300 text-sm font-medium mb-2">Username</label>
+                        <div class="relative">
+                            <i class="fas fa-at absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="text" name="username" required
+                                class="input-field w-full pl-10 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none"
+                                placeholder="Choose a username">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-300 text-sm font-medium mb-2">Password</label>
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="password" name="password" required oninput="checkPasswordStrength(this.value)"
+                                class="input-field w-full pl-10 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none"
+                                placeholder="Create a strong password">
+                        </div>
+                        <div id="password-strength" class="password-strength-bar bg-white/10"></div>
+                        <p class="text-slate-500 text-xs mt-1" id="strength-text">Use 8+ characters with mixed case, numbers & symbols</p>
+                    </div>
+
+                    <div>
+                        <label class="flex items-start gap-2 cursor-pointer">
+                            <input type="checkbox" required class="checkbox-custom mt-0.5">
+                            <span class="text-slate-400 text-sm">I agree to the <a href="#" class="text-electric hover:underline">Terms of Service</a> and <a href="#" class="text-electric hover:underline">Privacy Policy</a></span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-electric to-purple text-white font-semibold hover:shadow-lg hover:shadow-electric/30 transition-all duration-300 hover:-translate-y-0.5">
+                        Create Account
+                    </button>
+                </form>
+
+                <p class="mt-8 text-center text-slate-400 text-sm">
+                    Already have an account?
+                    <a href="/auth/login" class="text-electric hover:text-cyan transition-colors font-medium">Sign in</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Right Side - Branding -->
+        <div class="split-bg p-12 flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-purple/10 to-pink/10"></div>
+            <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-electric to-purple flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-electric/30">
+                        S
+                    </div>
+                    <span class="font-display font-bold text-2xl text-white">StudyHub</span>
+                </div>
+                <h2 class="font-display text-3xl md:text-4xl font-bold text-white mb-4">Start your learning journey</h2>
+                <p class="text-slate-400 leading-relaxed">Access thousands of study videos, track your progress, and connect with a community of learners.</p>
+            </div>
+            <div class="relative z-10 mt-8">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="glass-card rounded-xl p-4">
+                        <i class="fas fa-infinity text-electric text-xl mb-2"></i>
+                        <p class="text-white font-medium text-sm">Unlimited Access</p>
+                    </div>
+                    <div class="glass-card rounded-xl p-4">
+                        <i class="fas fa-chart-line text-purple text-xl mb-2"></i>
+                        <p class="text-white font-medium text-sm">Progress Tracking</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function checkPasswordStrength(password) {
+        const strengthBar = document.getElementById('password-strength');
+        const strengthText = document.getElementById('strength-text');
+        let strength = 0;
+
+        if (password.length >= 8) strength++;
+        if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+        if (password.match(/[0-9]/)) strength++;
+        if (password.match(/[^a-zA-Z0-9]/)) strength++;
+
+        strengthBar.className = 'password-strength-bar';
+
+        if (password.length === 0) {
+            strengthBar.classList.add('bg-white/10');
+            strengthBar.style.width = '0%';
+            strengthText.textContent = 'Use 8+ characters with mixed case, numbers & symbols';
+        } else if (strength <= 1) {
+            strengthBar.classList.add('strength-weak');
+            strengthText.textContent = 'Weak password - add more variety';
+        } else if (strength <= 2) {
+            strengthBar.classList.add('strength-medium');
+            strengthText.textContent = 'Medium strength - getting better!';
+        } else {
+            strengthBar.classList.add('strength-strong');
+            strengthText.textContent = 'Strong password! Great job.';
+        }
+    }
+</script>
+{% endblock %}

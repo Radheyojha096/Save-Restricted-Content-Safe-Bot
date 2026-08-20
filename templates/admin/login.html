@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login{% endblock %}
+
+{% block extra_head %}
+<style>
+    .admin-login-bg {
+        background: linear-gradient(135deg, #020617 0%, #111827 50%, #0f172a 100%);
+    }
+    .admin-input {
+        transition: all 0.3s ease;
+    }
+    .admin-input:focus {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        border-color: #3b82f6;
+    }
+    .admin-btn {
+        transition: all 0.3s ease;
+    }
+    .admin-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center -mt-24">
+    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 rounded-3xl overflow-hidden shadow-2xl">
+        <!-- Left Side - Branding -->
+        <div class="admin-login-bg p-12 flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-electric/10 to-purple/10"></div>
+            <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-electric to-purple flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-electric/30">
+                        S
+                    </div>
+                    <span class="font-display font-bold text-2xl text-white">StudyHub Admin</span>
+                </div>
+                <h2 class="font-display text-3xl md:text-4xl font-bold text-white mb-4">Welcome back, Admin</h2>
+                <p class="text-slate-400 leading-relaxed">Manage your video library, toggle featured content, and monitor platform analytics.</p>
+            </div>
+            <div class="relative z-10 mt-8">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+                        <i class="fas fa-shield-alt text-electric text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">Secure Admin Access</p>
+                        <p class="text-slate-500 text-sm">Authenticated session required</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side - Login Form -->
+        <div class="auth-card bg-slate-900/80 backdrop-blur-xl p-8 md:p-12">
+            <div class="max-w-md mx-auto">
+                <h3 class="font-display text-2xl font-bold text-white mb-2">Admin Login</h3>
+                <p class="text-slate-400 mb-8">Enter your credentials to access the dashboard</p>
+
+                {% if error %}
+                <div class="glass-card rounded-xl p-4 mb-6 border border-red-500/30 bg-red-500/10">
+                    <p class="text-red-400 text-sm"><i class="fas fa-exclamation-circle mr-2"></i>{{ error }}</p>
+                </div>
+                {% endif %}
+
+                <form method="post" class="space-y-5">
+                    <div>
+                        <label class="block text-slate-300 text-sm font-medium mb-2">Username</label>
+                        <div class="relative">
+                            <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="text" name="username" required
+                                class="admin-input w-full pl-10 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none"
+                                placeholder="Enter admin username">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-300 text-sm font-medium mb-2">Password</label>
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="password" name="password" required
+                                class="admin-input w-full pl-10 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none"
+                                placeholder="Enter admin password">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-electric to-purple text-white font-semibold admin-btn">
+                        Sign In
+                    </button>
+                </form>
+
+                <p class="mt-8 text-center text-slate-500 text-sm">
+                    <a href="/" class="text-slate-400 hover:text-white transition-colors">&larr; Back to StudyHub</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

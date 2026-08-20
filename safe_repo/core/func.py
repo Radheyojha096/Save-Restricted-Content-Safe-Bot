@@ -630,7 +630,81 @@ async def screenshot(video, duration, sender):
     stdout, stderr = await process.communicate()
     x = stderr.decode().strip()
     y = stdout.decode().strip()
-    if os.path.isfile(out):
-        return out
-    else:
-        None  
+def process_thumbnail(input_path, output_path, max_size=(320, 320)):
+    """Validate, resize and convert thumbnail to proper JPEG for Telegram."""
+    try:
+        img = cv2.imread(input_path)
+        if img is None:
+            return False
+
+        h, w = img.shape[:2]
+        if max(h, w) > max_size[0]:
+            scale = max_size[0] / max(h, w)
+            new_w = int(w * scale)
+            new_h = int(h * scale)
+            img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+        cv2.imwrite(output_path, img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        return os.path.exists(output_path) and os.path.getsize(output_path) > 0
+    except Exception as e:
+        logger.error(f"process_thumbnail failed: {e}")
+        return False
+
+
+def generate_video_thumbnail(video_path, output_path, max_size=(320, 320)):
+    """Generate a thumbnail from video at midpoint using OpenCV."""
+    try:
+        vcap = cv2.VideoCapture(video_path)
+        if not vcap.isOpened():
+            return False
+
+        frame_count = vcap.get(cv2.CAP_PROP_FRAME_COUNT)
+        fps = vcap.get(cv2.CAP_PROP_FPS)
+        if fps <= 0 or frame_count <= 0:
+            vcap.release()
+            return False
+
+        duration = frame_count / fps
+        mid_frame = int(frame_count / 2)
+        vcap.set(cv2.CAP_PROP_POS_FRAMES, mid_frame)
+        ret, frame = vcap.read()
+        vcap.release()
+
+        if not ret or frame is None:
+            return False
+
+        h, w = frame.shape[:2]
+        if max(h, w) > max_size[0]:
+            scale = max_size[0] / max(h, w)
+            new_w = int(w * scale)
+            new_h = int(h * scale)
+            frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+        cv2.imwrite(output_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        return os.path.exists(output_path) and os.path.getsize(output_path) > 0
+    except Exception as e:
+        logger.error(f"generate_video_thumbnail failed: {e}")
+        return False
+
+
+async def extract_original_thumbnail(client, msg, output_path):
+    """Extract the original thumbnail from a Telegram message if available."""
+    thumbs = None
+    if hasattr(msg, 'thumbs') and msg.thumbs:
+        thumbs = msg.thumbs
+    elif hasattr(msg, 'video') and msg.video and hasattr(msg.video, 'thumbs') and msg.video.thumbs:
+        thumbs = msg.video.thumbs
+    elif hasattr(msg, 'document') and msg.document and hasattr(msg.document, 'thumbs') and msg.document.thumbs:
+        thumbs = msg.document.thumbs
+
+    if not thumbs:
+        return None
+
+    best = max(thumbs, key=lambda t: (t.width or 0) * (t.height or 0))
+    try:
+        downloaded = await client.download_media(best, file_name=output_path)
+        if downloaded and os.path.exists(downloaded):
+            return output_path
+    except Exception as e:
+        logger.error(f"extract_original_thumbnail failed: {e}")
+    return None  

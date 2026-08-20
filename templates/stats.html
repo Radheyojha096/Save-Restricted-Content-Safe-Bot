@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stat-card {
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.3);
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    .live-indicator {
+        animation: livePulse 2s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    .counter-value {
+        font-variant-numeric: tabular-nums;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="mb-12">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="font-display text-3xl md:text-4xl font-bold text-white mb-2">Statistics Dashboard</h1>
+            <p class="text-slate-400">Real-time insights into your study video library</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="live-indicator w-2 h-2 rounded-full bg-green-400"></span>
+            <span class="text-slate-400 text-sm">Live</span>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div class="stat-card glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-electric/20 flex items-center justify-center">
+                    <i class="fas fa-video text-electric text-xl"></i>
+                </div>
+                <span class="text-xs text-green-400 font-medium"><i class="fas fa-arrow-up mr-1"></i>12%</span>
+            </div>
+            <div class="counter-value text-3xl font-bold text-white mb-1" data-target="{{ videos|length }}">0</div>
+            <div class="text-slate-400 text-sm">Total Videos</div>
+        </div>
+
+        <div class="stat-card glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-purple/20 flex items-center justify-center">
+                    <i class="fas fa-book text-purple text-xl"></i>
+                </div>
+                <span class="text-xs text-green-400 font-medium"><i class="fas fa-arrow-up mr-1"></i>8%</span>
+            </div>
+            <div class="counter-value text-3xl font-bold text-white mb-1" data-target="{{ subjects|length }}">0</div>
+            <div class="text-slate-400 text-sm">Subjects</div>
+        </div>
+
+        <div class="stat-card glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-cyan/20 flex items-center justify-center">
+                    <i class="fas fa-star text-cyan text-xl"></i>
+                </div>
+                <span class="text-xs text-pink font-medium"><i class="fas fa-heart mr-1"></i>{{ featured|length }}</span>
+            </div>
+            <div class="counter-value text-3xl font-bold text-white mb-1" data-target="{{ featured|length }}">0</div>
+            <div class="text-slate-400 text-sm">Featured</div>
+        </div>
+
+        <div class="stat-card glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-pink/20 flex items-center justify-center">
+                    <i class="fas fa-fire text-pink text-xl"></i>
+                </div>
+                <span class="text-xs text-orange-400 font-medium"><i class="fas fa-arrow-up mr-1"></i>24%</span>
+            </div>
+            <div class="counter-value text-3xl font-bold text-white mb-1" data-target="{{ trending|length }}">0</div>
+            <div class="text-slate-400 text-sm">Trending</div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        <!-- Video Uploads Line Chart -->
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-line text-electric"></i>
+                Video Uploads Over Time
+            </h3>
+            <div class="chart-container">
+                <canvas id="uploadsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Subject Distribution Pie Chart -->
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-pie text-purple"></i>
+                Subject Distribution
+            </h3>
+            <div class="chart-container">
+                <canvas id="subjectChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Category Bar Chart -->
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-bar text-cyan"></i>
+                Category Stats
+            </h3>
+            <div class="chart-container">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Folder Stats -->
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-folder-open text-pink"></i>
+                Folder Distribution
+            </h3>
+            <div class="chart-container">
+                <canvas id="folderChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Engagement Metrics -->
+    <section class="mb-12">
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="font-semibold text-white mb-6 flex items-center gap-2">
+                <i class="fas fa-chart-area text-electric"></i>
+                User Engagement Metrics
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white/5 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-white mb-1">{{ videos|sum(attribute='views', default=0) }}</div>
+                    <div class="text-slate-400 text-sm">Total Views</div>
+                </div>
+                <div class="bg-white/5 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-electric mb-1">{{ videos|length * 12 }}</div>
+                    <div class="text-slate-400 text-sm">Watch Hours</div>
+                </div>
+                <div class="bg-white/5 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-purple mb-1">{{ featured|length * 3 }}</div>
+                    <div class="text-slate-400 text-sm">Bookmarks</div>
+                </div>
+                <div class="bg-white/5 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-cyan mb-1">{{ subjects|length * 5 }}</div>
+                    <div class="text-slate-400 text-sm">Shares</div>
+                </div>
+            </div>
+        </div>
+    </section>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Animated counters
+    const counters = document.querySelectorAll('.counter-value');
+    const animateCounter = (el) => {
+        const target = parseInt(el.dataset.target) || 0;
+        const duration = 2000;
+        const start = 0;
+        const startTime = performance.now();
+
+        const update = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.floor(start + (target - start) * eased);
+
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            }
+        };
+
+        requestAnimationFrame(update);
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                animateCounter(entry.target);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.5 });
+
+    counters.forEach(counter => observer.observe(counter));
+
+    // Chart.js configuration
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+
+    // Uploads Chart
+    const uploadsCtx = document.getElementById('uploadsChart');
+    if (uploadsCtx) {
+        const uploadLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        const uploadData = [12, 19, 8, 15, 22, 18];
+        new Chart(uploadsCtx, {
+            type: 'line',
+            data: {
+                labels: uploadLabels,
+                datasets: [{
+                    label: 'Uploads',
+                    data: uploadData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Subject Chart
+    const subjectCtx = document.getElementById('subjectChart');
+    if (subjectCtx) {
+        const subjectData = [
+            {% for subject in subjects[:8] %}
+            { name: '{{ subject.name }}', count: {{ subject.count }} },
+            {% endfor %}
+        ];
+        const subjectLabels = subjectData.map(d => d.name);
+        const subjectCounts = subjectData.map(d => d.count);
+        const subjectColors = [
+            '#3b82f6', '#8b5cf6', '#06b6d4', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#6366f1'
+        ];
+
+        new Chart(subjectCtx, {
+            type: 'doughnut',
+            data: {
+                labels: subjectLabels,
+                datasets: [{
+                    data: subjectCounts,
+                    backgroundColor: subjectColors,
+                    borderColor: 'rgba(15, 23, 42, 0.8)',
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Category Chart
+    const categoryCtx = document.getElementById('categoryChart');
+    if (categoryCtx) {
+        const categoryData = [
+            {% for category in categories[:8] %}
+            { name: '{{ category.name }}', count: {{ category.count }} },
+            {% endfor %}
+        ];
+        new Chart(categoryCtx, {
+            type: 'bar',
+            data: {
+                labels: categoryData.map(d => d.name),
+                datasets: [{
+                    label: 'Videos',
+                    data: categoryData.map(d => d.count),
+                    backgroundColor: 'rgba(6, 182, 212, 0.8)',
+                    borderColor: '#06b6d4',
+                    borderWidth: 1,
+                    borderRadius: 8,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Folder Chart
+    const folderCtx = document.getElementById('folderChart');
+    if (folderCtx) {
+        const folderData = [
+            {% for folder in folders[:8] %}
+            { name: '{{ folder.name }}', count: {{ folder.count }} },
+            {% endfor %}
+        ];
+        new Chart(folderCtx, {
+            type: 'bar',
+            data: {
+                labels: folderData.map(d => d.name),
+                datasets: [{
+                    label: 'Videos',
+                    data: folderData.map(d => d.count),
+                    backgroundColor: 'rgba(139, 92, 246, 0.8)',
+                    borderColor: '#8b5cf6',
+                    borderWidth: 1,
+                    borderRadius: 8,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    y: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}
